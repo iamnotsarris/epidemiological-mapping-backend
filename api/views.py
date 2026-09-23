@@ -2,11 +2,13 @@ from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.db.models import Count, Model
-from .models import PacienteDengue, PacienteHans, PacienteHepatite, PacienteAnimaisPec, PacienteIntoxicacao, PacienteLeish, PacienteAidsAdulto
+from .models import PacienteDengue, PacienteHans, PacienteHepatite, PacienteAnimaisPec, PacienteIntoxicacao, PacienteLeish, PacienteAidsAdulto, CoberturaVacinal
 from .serializers import PacienteDengueSerializer, PacienteTuberculoseSerializer, PacienteViolenciaDomestica, \
     PacienteSifilis, \
-    PacienteSifilisSerializer, PacienteViolenciaDomesticaSerializer, PacienteChagas, PacienteChagasSerializer, PacienteHansSerializer, PacienteHepatiteSerializer, PacienteAnimaisPecSerializer, PacienteIntoxicacaoSerializer, PacienteLeishSerializer, PacienteAidsAdultoSerializer
+    PacienteSifilisSerializer, PacienteViolenciaDomesticaSerializer, PacienteChagas, PacienteChagasSerializer, PacienteHansSerializer, PacienteHepatiteSerializer, PacienteAnimaisPecSerializer, PacienteIntoxicacaoSerializer, PacienteLeishSerializer, PacienteAidsAdultoSerializer, CoberturaVacinalSerializer
 from api.models import PacienteTuberculose
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import CustomTokenObtainPairSerializer
 
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
@@ -16,7 +18,7 @@ import google.generativeai as genai
 from api.utils.embedding_manager import EmbeddingManager
 
 
-class PacienteDengueViewSet(viewsets.ReadOnlyModelViewSet):
+class PacienteDengueViewSet(viewsets.ModelViewSet):
     queryset = PacienteDengue.objects.all()
     serializer_class = PacienteDengueSerializer
 
@@ -59,6 +61,13 @@ class PacienteLeishViewSet(viewsets.ModelViewSet):
 class PacienteAidsAdultoViewSet(viewsets.ModelViewSet):
     queryset = PacienteAidsAdulto.objects.all()
     serializer_class = PacienteAidsAdultoSerializer
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+class CoberturaVacinalViewSet(viewsets.ModelViewSet):
+    queryset = CoberturaVacinal.objects.all().order_by('-ano')
+    serializer_class = CoberturaVacinalSerializer
 
 @api_view(['GET'])
 def casos_por_bairro(request): # funcao para agrupar o campo bairro e contar os numeros de registros

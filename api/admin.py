@@ -45,8 +45,8 @@ class PacienteHepatiteAdmin(admin.ModelAdmin):
 
 @admin.register(PacienteAnimaisPec)
 class PacienteAnimaisPecAdmin(admin.ModelAdmin):
-    list_display = ("id_unidade", "nm_ubs", "hospital", "nu_notific")
-    search_fields = ("id_unidade", "nm_ubs", "hospital", "nu_notific")
+    list_display = ("id_unidade", "nm_ubs", "hospital", "ano_notific", "nu_notific")
+    search_fields = ("id_unidade", "nm_ubs", "hospital", "ano_notific", "nu_notific")
 
 @admin.register(PacienteIntoxicacao)
 class PacienteIntoxicacaoAdmin(admin.ModelAdmin):
@@ -178,6 +178,7 @@ class UploadDBFAdmin(admin.ModelAdmin):
                     id_unidade=record.get('ID_UNIDADE') or record.get('ID_UNID'),
                     nm_ubs=record.get('NM_UBS') or record.get('ID_UBS'),
                     hospital=record.get('HOSPITAL') or record.get('HOSPITAL'),
+                    ano_notific=record.get('NU_NOTIFIC') or record.get('NU_NOTIFICA'),
                     nu_notific=record.get('NU_NOTIFIC') or record.get('NU_NOTIFICA'),
                 )
                 registros_animaispec.append(nova_linha)

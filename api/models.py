@@ -59,6 +59,7 @@ class PacienteAnimaisPec(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
     hospital = models.TextField(null=True, blank=True)
+    ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
 class PacienteIntoxicacao(models.Model):
@@ -79,3 +80,13 @@ class UploadDBF(models.Model):
 
     def __str__(self):
         return f"{self.arquivo}"
+
+class CoberturaVacinal(models.Model):
+    ano = models.IntegerField()
+    imunobiologico = models.CharField(max_length=100)
+    cobertura_percentual = models.FloatField()
+    meta_otima = models.FloatField(default=95.0)
+    data_atualizacao = models.DateField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.imunobiologico} ({self.ano}) - {self.cobertura_percentual}%"
