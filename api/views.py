@@ -17,11 +17,13 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 from .utils.assistente import TOOLS, executar_funcao
 from api.utils.embedding_manager import EmbeddingManager
+from .utils.importador_dbf import processar_arquivo_dbf, processar_registros
 import pandas as pd
 import requests
 import urllib.parse
 from rest_framework import status
 from datetime import datetime
+import tempfile
 
 
 class PacienteDengueViewSet(viewsets.ModelViewSet):
@@ -75,12 +77,11 @@ class CoberturaVacinalViewSet(viewsets.ModelViewSet):
     queryset = CoberturaVacinal.objects.all().order_by('-ano')
     serializer_class = CoberturaVacinalSerializer
 
-@api_view(['GET'])
-def casos_por_bairro(request): # funcao para agrupar o campo bairro e contar os numeros de registros
-    dados = PacienteDengue.objects.values('bairro').annotate(casos=Count('id'))
-    # dados formatados
-    dados_formatados = {item['bairro']: item['casos'] for item in dados if item['bairro']}
 
+@api_view(['GET'])
+def casos_por_bairro(request):
+    dados = PacienteDengue.objects.values('bairro').annotate(casos=Count('id'))
+    dados_formatados = {item['bairro']: item['casos'] for item in dados if item['bairro']}
     return Response(dados_formatados)
 
 
@@ -131,7 +132,7 @@ def chat_suporte(request):
             f"Contexto:\n{context}\n\nPergunta: {user_message}"
         )
 
-        tool_calls = []   # <── NOVO: acumula o que foi chamado
+        tool_calls = []
         MAX_ITERACOES = 5
 
         for _ in range(MAX_ITERACOES):
@@ -148,7 +149,6 @@ def chat_suporte(request):
                 args = dict(fc.args) if fc.args else {}
                 resultado = executar_funcao(fc.name, args)
 
-                # Guarda pro frontend
                 tool_calls.append({
                     "tool": fc.name,
                     "args": args,
@@ -172,12 +172,11 @@ def chat_suporte(request):
             p.text for p in response.parts if getattr(p, "text", None)
         ).strip()
 
-        # NOVO: monta um bloco estruturado opcional
         structured = _montar_structured(tool_calls)
 
         return Response({
             'response': texto_final or 'Não consegui responder agora.',
-            'structured': structured,   # ← None se não houver ranking/tabela
+            'structured': structured,
             'status': 'success'
         })
     except Exception as e:
@@ -187,7 +186,6 @@ def chat_suporte(request):
 
 
 def _montar_structured(tool_calls):
-    """Transforma o resultado da tool em algo que o frontend sabe desenhar."""
     if not tool_calls:
         return None
 
@@ -244,7 +242,6 @@ def _montar_structured(tool_calls):
 @api_view(['POST'])
 def upload_arquivo(request):
     try:
-        # Pega o arquivo enviado pelo FormData do React
         arquivo = request.FILES.get('arquivo')
         tabela_destino = request.data.get('tabela_destino')
 
@@ -253,12 +250,12 @@ def upload_arquivo(request):
 
         nome_arquivo = arquivo.name.lower()
 
+        # ---- CSV (Cobertura Vacinal) ----
         if nome_arquivo.endswith('.csv'):
             df = pd.read_csv(arquivo, sep=';', encoding='utf-8', low_memory=False)
             df.columns = df.columns.str.lower()
 
             coluna_municipio = 'municipio' if 'municipio' in df.columns else 'no_municipio'
-
             if coluna_municipio in df.columns:
                 df = df[df[coluna_municipio].str.upper() == 'FLORIANO']
 
@@ -282,7 +279,62 @@ def upload_arquivo(request):
                     )
             return Response({"status": "sucesso", "mensagem": "Arquivo CSV processado com sucesso!"})
 
-        # Caso você vá enviar os arquivos DBF pelo mesmo modal, adicione a lógica de DBF aqui depois.
+        # ---- DBF (SINAN) ----
+        elif nome_arquivo.endswith('.dbf'):
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.dbf') as tmp:
+                for chunk in arquivo.chunks():
+                    tmp.write(chunk)
+                caminho_tmp = tmp.name
+
+            try:
+                resultado = processar_arquivo_dbf(caminho_tmp, nome_original=nome_arquivo)
+
+                if resultado.get("status") == "erro":
+                    return Response({"erro": resultado.get("mensagem")}, status=status.HTTP_400_BAD_REQUEST)
+
+                return Response({
+                    "status": "sucesso",
+                    "mensagem": f"Arquivo DBF processado! {resultado.get('registros_inseridos')} registros inseridos."
+                })
+            except Exception as e:
+                return Response({"erro": f"Erro ao processar DBF: {str(e)}"},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            finally:
+                os.remove(caminho_tmp)
+
+        # ---- XLSX / XLS ----
+        elif nome_arquivo.endswith(('.xlsx', '.xls')):
+            try:
+                df = pd.read_excel(arquivo)
+
+                # Normaliza os nomes das colunas: remove espaços, deixa upper
+                df.columns = [str(c).strip().upper() for c in df.columns]
+
+                # Opcional: substitui NaN por None para não virar "nan" no banco
+                df = df.where(pd.notnull(df), None)
+
+                registros = df.to_dict(orient='records')
+
+                resultado = processar_registros(registros, nome_arquivo)
+
+                if resultado.get("status") == "erro":
+                    return Response({"erro": resultado["mensagem"]},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
+                return Response({
+                    "status": "sucesso",
+                    "mensagem": f"Planilha processada! {resultado['registros_inseridos']} registros inseridos."
+                })
+            except ImportError as e:
+                return Response({
+                    "erro": f"Biblioteca faltando: {str(e)}. Rode: pip install openpyxl xlrd"
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()  # ← isso imprime o traceback real no terminal
+                return Response({"erro": f"Erro ao processar planilha: {str(e)}"},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         return Response({"erro": "Formato de arquivo não suportado."}, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
@@ -309,7 +361,6 @@ def sincronizar_api_governo(request):
         response.raise_for_status()
         dados = response.json()
 
-        # Ajuste AQUI conforme o JSON real (veja no Postman)
         registros = dados if isinstance(dados, list) else dados.get("records", [])
 
         for registro in registros:
@@ -325,7 +376,6 @@ def sincronizar_api_governo(request):
     if not contagem_doses:
         vacinas_oficiais = [
             {"imunobiologico": "vacina BCG", "cobertura": 93.93, "meta": 95.0},
-
         ]
         for v in vacinas_oficiais:
             CoberturaVacinal.objects.update_or_create(
