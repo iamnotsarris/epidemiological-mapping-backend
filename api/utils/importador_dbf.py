@@ -1,12 +1,14 @@
 import os
-from doctest import register_optionflag
-
-from api.models import PacienteDengue, PacienteTuberculose, PacienteSifilis, PacienteViolenciaDomestica, PacienteChagas, PacienteHans, PacienteHepatite, PacienteAnimaisPec, PacienteIntoxicacao, PacienteLeish, PacienteAidsAdulto, CoberturaVacinal
+from api.models import (
+    PacienteDengue, PacienteTuberculose, PacienteSifilis, PacienteViolenciaDomestica,
+    PacienteChagas, PacienteHans, PacienteHepatite, PacienteAnimaisPec,
+    PacienteIntoxicacao, PacienteLeish, PacienteAidsAdulto, CoberturaVacinal,
+)
 from dbfread import DBF
 from datetime import datetime
 
 MAPEA_ENDEMIAS = {
-    'dengon': PacienteDengue,
+    'deng': PacienteDengue,
     'tubercu': PacienteTuberculose,
     'sifi': PacienteSifilis,
     'violencia': PacienteViolenciaDomestica,
@@ -17,14 +19,14 @@ MAPEA_ENDEMIAS = {
     'intoxicacao': PacienteIntoxicacao,
     'leish': PacienteLeish,
     'aidsadulto': PacienteAidsAdulto,
-    'coberturavacinal': CoberturaVacinal
+    'coberturavacinal': CoberturaVacinal,
 }
 
 
-def processar_arquivo_dbf(caminho_arquivo):
-    nome_arquivo = os.path.basename(caminho_arquivo).lower()
+def processar_registros(records, nome_arquivo):
+    """Recebe uma lista de dicionários (do DBF ou do Excel) e salva no banco."""
+    nome_arquivo = nome_arquivo.lower()
     modelo_alvo = None
-
     for chave, modelo in MAPEA_ENDEMIAS.items():
         if chave in nome_arquivo:
             modelo_alvo = modelo
@@ -37,19 +39,34 @@ def processar_arquivo_dbf(caminho_arquivo):
         if not valor_data:
             return None
         try:
+            # Se já vier como datetime/Timestamp (Excel)
+            if hasattr(valor_data, "strftime"):
+                return valor_data.strftime("%Y-%m-%d")
+
+            # Se vier como string
             data_limpa = str(valor_data).strip().split(" ")[0]
-            if data_limpa == "30/12/1899":
+            if data_limpa in ("30/12/1899", "NaT", "nan", ""):
                 return None
-            data_obj = datetime.strptime(data_limpa, "%d/%m/%Y")
-            return data_obj.strftime("%Y-%m-%d")
+
+            # Tenta DD/MM/YYYY primeiro
+            try:
+                return datetime.strptime(data_limpa, "%d/%m/%Y").strftime("%Y-%m-%d")
+            except ValueError:
+                pass
+
+            # Tenta YYYY-MM-DD (formato que o pandas às vezes entrega)
+            try:
+                return datetime.strptime(data_limpa, "%Y-%m-%d").strftime("%Y-%m-%d")
+            except ValueError:
+                pass
+
+            return None
         except (ValueError, TypeError, AttributeError):
             return None
 
     registros_para_salvar = []
-    tabela_dbf = DBF(caminho_arquivo, encoding='iso-8859-1', load=True, ignore_missing_memofile=True)
 
-    for record in tabela_dbf:
-
+    for record in records:
         if modelo_alvo == PacienteDengue:
             partes_endereco = [
                 record.get('NM_LOGRADO'),
@@ -96,6 +113,7 @@ def processar_arquivo_dbf(caminho_arquivo):
                 nm_ubs=record.get('NM_UBS'),
                 ano_notific=record.get('ANO_NOTIFIC'),
             )
+            registros_para_salvar.append(nova_linha)
 
         elif modelo_alvo == PacienteViolenciaDomestica:
             nova_linha = PacienteViolenciaDomestica(
@@ -104,6 +122,7 @@ def processar_arquivo_dbf(caminho_arquivo):
                 nu_notific=record.get('NU_NOTIFIC'),
                 ano_notific=record.get('ANO_NOTIFIC'),
             )
+            registros_para_salvar.append(nova_linha)
 
         elif modelo_alvo == PacienteChagas:
             nova_linha = PacienteChagas(
@@ -147,7 +166,6 @@ def processar_arquivo_dbf(caminho_arquivo):
                 ano_notific=record.get('ANO_NOTIFIC'),
                 nu_notific=record.get('NU_NOTIFIC'),
             )
-
             registros_para_salvar.append(nova_linha)
 
         elif modelo_alvo == PacienteLeish:
@@ -163,6 +181,7 @@ def processar_arquivo_dbf(caminho_arquivo):
                 nu_notific=record.get('NU_NOTIFIC'),
             )
             registros_para_salvar.append(nova_linha)
+
         elif modelo_alvo == CoberturaVacinal:
             nova_linha = CoberturaVacinal(
                 ano=record.get('ANO'),
@@ -170,10 +189,15 @@ def processar_arquivo_dbf(caminho_arquivo):
                 cobertura_percentual=record.get('COBERTURA_PERCENTUAL'),
                 meta_otima=record.get('META_OTIMA'),
                 data_atualizacao=record.get('DATA_ATUALIZACAO'),
-                ano_notific=record.get('ANO_NOTIFIC'),
+                # ⚠️ ano_notific NÃO existe no model CoberturaVacinal
             )
             registros_para_salvar.append(nova_linha)
 
     modelo_alvo.objects.bulk_create(registros_para_salvar, ignore_conflicts=True)
-
     return {"status": "sucesso", "registros_inseridos": len(registros_para_salvar)}
+
+
+def processar_arquivo_dbf(caminho_arquivo, nome_original=None):
+    nome_arquivo = (nome_original or os.path.basename(caminho_arquivo)).lower()
+    tabela = DBF(caminho_arquivo, encoding='iso-8859-1', load=True, ignore_missing_memofile=True)
+    return processar_registros(list(tabela), nome_arquivo)
