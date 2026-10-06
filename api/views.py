@@ -46,20 +46,25 @@ MODELOS_GLOBAIS = (CoberturaVacinal,)
 
 class IsolamentoUBSMixin:
     """
-    - ADMIN / superuser  → vê tudo
-    - UBS                → vê só onde id_unidade == perfil.id_unidade
-    - sem login          → não vê nada
-    - models globais     → todo logado vê (CoberturaVacinal)
+    - SEM LOGIN (visitante)  → vê TUDO (modo público)
+    - ADMIN / superuser      → vê tudo
+    - UBS                    → vê só onde id_unidade == perfil.id_unidade
+    - models globais         → todo mundo vê (CoberturaVacinal)
     """
     def get_queryset(self):
         usuario = self.request.user
         modelo = self.serializer_class.Meta.model
 
+        # 🌍 VISITANTE (não logado) → modo público → vê tudo
         if not usuario.is_authenticated:
-            print(f"[ISOLAMENTO] {modelo.__name__}: não autenticado → vazio")
-            return modelo.objects.none()
+            print(f"[ISOLAMENTO] {modelo.__name__}: visitante → all")
+            return modelo.objects.all()
 
         if modelo in MODELOS_GLOBAIS:
+            return modelo.objects.all()
+
+        # 🌍 MODO MAPA (query param) → vê tudo mesmo logado
+        if self.request.query_params.get('scope') == 'all':
             return modelo.objects.all()
 
         try:
@@ -88,17 +93,25 @@ class IsolamentoUBSMixin:
                   f"cnes={cnes} → {qs.count()} registros")
             return qs
 
-        return modelo.objects.none()
+        # Qualquer outro caso → trata como visitante
+        return modelo.objects.all()
 
 
 class IsUBSOrAdmin(permissions.BasePermission):
     """
-    - ADMIN / superuser: acesso total (inclui DELETE)
-    - UBS: list, retrieve, create, update, partial_update — NÃO pode DELETE
+    - Leitura (GET/HEAD/OPTIONS): liberada pra todos — inclusive visitante
+    - Escrita (POST/PUT/PATCH): requer login
+    - DELETE: só ADMIN/superuser
     """
     def has_permission(self, request, view):
+        # 🔓 Leituras são públicas
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # 🔒 Escritas exigem login
         if not request.user or not request.user.is_authenticated:
             return False
+
         if request.user.is_superuser:
             return True
 
@@ -106,20 +119,61 @@ class IsUBSOrAdmin(permissions.BasePermission):
         if perfil and perfil.role == 'ADMIN':
             return True
 
+        # UBS não pode deletar
         if request.method == 'DELETE':
             return False
 
         return True
 
     def has_object_permission(self, request, view, obj):
+        # 🔓 Leitura pública
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        if not request.user or not request.user.is_authenticated:
+            return False
+
         if request.user.is_superuser:
             return True
+
         perfil = getattr(request.user, 'perfil', None)
         if perfil and perfil.role == 'ADMIN':
             return True
         if perfil and perfil.role == 'UBS':
             return str(obj.id_unidade).strip() == str(perfil.id_unidade or '').strip()
         return False
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+    """
+    - Leitura (GET/HEAD/OPTIONS): liberada pra todos — inclusive visitante
+    - Escrita (POST/PUT/PATCH/DELETE): SÓ ADMIN/superuser
+    """
+    def has_permission(self, request, view):
+        # 🔓 Leitura pública
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # 🔒 Escrita exige login
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        if request.user.is_superuser:
+            return True
+
+        perfil = getattr(request.user, 'perfil', None)
+        if perfil and perfil.role == 'ADMIN':
+            return True
+
+        # UBS NÃO pode escrever em Cobertura Vacinal
+        return False
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if request.user.is_superuser:
+            return True
+        perfil = getattr(request.user, 'perfil', None)
+        return bool(perfil and perfil.role == 'ADMIN')
 
 
 class BaseEpiViewSet(IsolamentoUBSMixin, viewsets.ModelViewSet):
@@ -174,6 +228,7 @@ class PacienteAidsAdultoViewSet(BaseEpiViewSet):
 
 class CoberturaVacinalViewSet(BaseEpiViewSet):
     serializer_class = CoberturaVacinalSerializer
+    permission_classes = [IsAdminOrReadOnly]
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
