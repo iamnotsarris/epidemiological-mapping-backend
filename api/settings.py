@@ -23,9 +23,10 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "0.0.0.0",
+    "0.0.0.0:8000",
     "api-data-sigma-lovat.vercel.app",
     "api-data-backend.onrender.com",
-    "192.168.137.1"
+    "192.168.137.1",
 ]
 
 

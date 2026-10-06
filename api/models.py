@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Classe do Paciente
 class PacienteDengue(models.Model):
@@ -70,14 +71,17 @@ class PacienteAnimaisPec(models.Model):
     nu_notific = models.TextField(null=True, blank=True)
 
 class PacienteIntoxicacao(models.Model):
+    id_unidade = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
 class PacienteLeish(models.Model):
+    id_unidade = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
 class PacienteAidsAdulto(models.Model):
+    id_unidade = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
@@ -97,3 +101,15 @@ class CoberturaVacinal(models.Model):
 
     def __str__(self):
         return f"{self.imunobiologico} ({self.ano}) - {self.cobertura_percentual}%"
+
+class PerfilUsuario(models.Model):
+    TIPO_USUARIO = (
+        ('ADMIN', 'Administrador'),
+        ('UBS', 'Unidade Básica de Saúde'),
+    )
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
+    role = models.CharField(max_length=10, choices=TIPO_USUARIO, default='UBS')
+    id_unidade = models.CharField(max_length=50, null=True, blank=True, help_text="Preencha com o ID da Unidade (CNES) se for UBS")
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.role}"

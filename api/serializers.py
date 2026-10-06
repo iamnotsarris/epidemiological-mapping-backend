@@ -77,6 +77,16 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
         data['username'] = self.user.username
         data['first_name'] = self.user.first_name
+
+        # Injetando dados de Multitenancy no Token JWT
+        if hasattr(self.user, 'perfil'):
+            data['role'] = self.user.perfil.role
+            data['id_unidade'] = self.user.perfil.id_unidade
+        else:
+            # Fallback (caso um admin padrão faça login antes de ter um perfil criado)
+            data['role'] = 'ADMIN' if self.user.is_superuser else 'UBS'
+            data['id_unidade'] = None
+
         return data
 
 class CoberturaVacinalSerializer(serializers.ModelSerializer):
