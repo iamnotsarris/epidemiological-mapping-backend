@@ -13,7 +13,6 @@ class EmbeddingManager:
         
     def _initialize_knowledge_base(self):
         """Inicializa a base de conhecimento com o texto predefinido"""
-        # Divide o texto em parágrafos ou seções menores
         sections = CONHECIMENTO_BASE.split('\n\n')
         documents = [
             {

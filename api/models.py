@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-# Classe do Paciente
 class PacienteDengue(models.Model):
     numero_notificacao = models.CharField(max_length=50, null=True, blank=True)
     id_unidade = models.TextField(null=True, blank=True)

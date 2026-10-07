@@ -100,7 +100,6 @@ UNIDADE_NOTIFICADORA_PARA_UBS = {
 
 
 def normalizar_texto(texto):
-    """Remove acentos e joga pra maiúsculo. Usado para chaves de dicionário."""
     if texto is None:
         return ""
     return (
@@ -123,7 +122,6 @@ def extrair_bairro(endereco_string):
 
     ultima = partes[-1]
 
-    # Verifica se a última parte é um CEP. Se for, o bairro costuma ser a penúltima parte
     eh_cep = (ultima.isdigit() or
               (ultima.replace("-", "").replace(".", "").isdigit()
                and len(ultima) <= 10))
@@ -143,10 +141,6 @@ def processar_registros(records, nome_arquivo):
 
     if not modelo_alvo:
         return {"status": "erro", "mensagem": "Endemia não reconhecida pelo nome do arquivo."}
-
-    # ------------------------------------------------------------------
-    # Helpers internos
-    # ------------------------------------------------------------------
 
     def formatar_data(valor_data):
         if not valor_data:
@@ -195,7 +189,6 @@ def processar_registros(records, nome_arquivo):
           3) ID_UNIDADE cru (assume que já é uma UBS)
         """
 
-        # ---------- 1) Bairro de residência manda ----------
         bairro = extrair_bairro(_montar_endereco(record))
         if bairro:
             nome_ubs = BAIRRO_PARA_UBS_NOME.get(bairro)
@@ -203,34 +196,24 @@ def processar_registros(records, nome_arquivo):
                 cnes = UBS_NOME_PARA_CNES.get(nome_ubs)
                 if cnes and cnes != 'CNES_AQUI':
                     return cnes
-            # Bairro não mapeado → cai pro passo 2
-            # (útil pra você ir ampliando o BAIRRO_PARA_UBS_NOME com o tempo)
             print(f"[AVISO] Bairro não mapeado: {bairro!r}")
 
-        # ---------- 2) ID_UNIDADE ----------
         valor = record.get('ID_UNIDADE')
         if valor is None:
             valor = record.get('ID_UNID')
 
         id_original = _limpar_cnes(valor)
 
-        # 2a) Match direto por CNES
         if id_original and id_original in UNIDADE_NOTIFICADORA_PARA_UBS:
             return UNIDADE_NOTIFICADORA_PARA_UBS[id_original]
 
-        # 2b) Match por NOME da unidade (NM_UBS), normalizado
         nm_ubs_raw = record.get('NM_UBS')
         if nm_ubs_raw:
             chave_nome = normalizar_texto(nm_ubs_raw)
             if chave_nome in UNIDADE_NOTIFICADORA_PARA_UBS:
                 return UNIDADE_NOTIFICADORA_PARA_UBS[chave_nome]
 
-        # ---------- 3) ID_UNIDADE cru ----------
-        return id_original  # pode ser None
-
-    # ------------------------------------------------------------------
-    # Loop principal
-    # ------------------------------------------------------------------
+        return id_original
 
     registros_para_salvar = []
 

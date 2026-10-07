@@ -87,7 +87,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def get_token(cls, user):
         token = super().get_token(user)
 
-        # Claims customizadas dentro do JWT
         token['username'] = user.username
         token['first_name'] = user.first_name
 
@@ -102,7 +101,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
-        # Chama o get_token internamente e monta a response do /api/token/
         data = super().validate(attrs)
 
         data['username'] = self.user.username

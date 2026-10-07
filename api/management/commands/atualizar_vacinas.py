@@ -6,7 +6,6 @@ class Command(BaseCommand):
     help = 'Popula o banco com dados de cobertura vacinal para o dashboard'
 
     def handle(self, *args, **options):
-        # Dados extraídos do seu painel do Qlik Sense para 2026
         vacinas = [
             # Ao Nascer
             {'imunobiologico': 'BCG', 'cobertura': 93.93, 'meta': 95.0},

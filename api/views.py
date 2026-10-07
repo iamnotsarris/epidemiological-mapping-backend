@@ -37,10 +37,6 @@ from .utils.importador_dbf import processar_arquivo_dbf, processar_registros
 
 load_dotenv()
 
-# =====================================================================
-# MULTI-TENANCY
-# =====================================================================
-
 MODELOS_GLOBAIS = (CoberturaVacinal,)
 
 
@@ -55,7 +51,6 @@ class IsolamentoUBSMixin:
         usuario = self.request.user
         modelo = self.serializer_class.Meta.model
 
-        # 🌍 VISITANTE (não logado) → modo público → vê tudo
         if not usuario.is_authenticated:
             print(f"[ISOLAMENTO] {modelo.__name__}: visitante → all")
             return modelo.objects.all()
@@ -63,7 +58,6 @@ class IsolamentoUBSMixin:
         if modelo in MODELOS_GLOBAIS:
             return modelo.objects.all()
 
-        # 🌍 MODO MAPA (query param) → vê tudo mesmo logado
         if self.request.query_params.get('scope') == 'all':
             return modelo.objects.all()
 
@@ -93,7 +87,6 @@ class IsolamentoUBSMixin:
                   f"cnes={cnes} → {qs.count()} registros")
             return qs
 
-        # Qualquer outro caso → trata como visitante
         return modelo.objects.all()
 
 
@@ -104,11 +97,9 @@ class IsUBSOrAdmin(permissions.BasePermission):
     - DELETE: só ADMIN/superuser
     """
     def has_permission(self, request, view):
-        # 🔓 Leituras são públicas
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # 🔒 Escritas exigem login
         if not request.user or not request.user.is_authenticated:
             return False
 
@@ -119,14 +110,12 @@ class IsUBSOrAdmin(permissions.BasePermission):
         if perfil and perfil.role == 'ADMIN':
             return True
 
-        # UBS não pode deletar
         if request.method == 'DELETE':
             return False
 
         return True
 
     def has_object_permission(self, request, view, obj):
-        # 🔓 Leitura pública
         if request.method in permissions.SAFE_METHODS:
             return True
 
@@ -149,11 +138,9 @@ class IsAdminOrReadOnly(permissions.BasePermission):
     - Escrita (POST/PUT/PATCH/DELETE): SÓ ADMIN/superuser
     """
     def has_permission(self, request, view):
-        # 🔓 Leitura pública
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # 🔒 Escrita exige login
         if not request.user or not request.user.is_authenticated:
             return False
 
@@ -164,7 +151,6 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         if perfil and perfil.role == 'ADMIN':
             return True
 
-        # UBS NÃO pode escrever em Cobertura Vacinal
         return False
 
     def has_object_permission(self, request, view, obj):
@@ -183,15 +169,9 @@ class BaseEpiViewSet(IsolamentoUBSMixin, viewsets.ModelViewSet):
         perfil = getattr(self.request.user, 'perfil', None)
         if (perfil and perfil.role == 'UBS'
                 and not self.request.user.is_superuser):
-            # Força o id_unidade do próprio usuário, mesmo que o payload tente outro
             serializer.save(id_unidade=str(perfil.id_unidade).strip())
         else:
             serializer.save()
-
-
-# =====================================================================
-# VIEWSETS
-# =====================================================================
 
 class PacienteDengueViewSet(BaseEpiViewSet):
     serializer_class = PacienteDengueSerializer
@@ -232,11 +212,6 @@ class CoberturaVacinalViewSet(BaseEpiViewSet):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
-
-
-# =====================================================================
-# ENDPOINTS CUSTOMIZADOS
-# =====================================================================
 
 @api_view(['GET'])
 def casos_por_bairro(request):
@@ -293,10 +268,6 @@ def debug_me(request):
         "total_dengue_visivel": total_visivel,
     })
 
-
-# =====================================================================
-# CHAT / IA
-# =====================================================================
 
 genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
 
@@ -447,11 +418,6 @@ def _montar_structured(tool_calls):
 
     return None
 
-
-# =====================================================================
-# UPLOAD
-# =====================================================================
-
 @api_view(['POST'])
 def upload_arquivo(request):
     try:
@@ -462,7 +428,6 @@ def upload_arquivo(request):
 
         nome_arquivo = arquivo.name.lower()
 
-        # ---- CSV (Cobertura Vacinal) ----
         if nome_arquivo.endswith('.csv'):
             df = pd.read_csv(arquivo, sep=';', encoding='utf-8', low_memory=False)
             df.columns = df.columns.str.lower()
@@ -492,7 +457,6 @@ def upload_arquivo(request):
             return Response({"status": "sucesso",
                              "mensagem": "Arquivo CSV processado com sucesso!"})
 
-        # ---- DBF (SINAN) ----
         elif nome_arquivo.endswith('.dbf'):
             with tempfile.NamedTemporaryFile(delete=False, suffix='.dbf') as tmp:
                 for chunk in arquivo.chunks():
@@ -514,7 +478,6 @@ def upload_arquivo(request):
             finally:
                 os.remove(caminho_tmp)
 
-        # ---- XLSX / XLS ----
         elif nome_arquivo.endswith(('.xlsx', '.xls')):
             try:
                 df = pd.read_excel(arquivo)

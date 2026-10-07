@@ -77,7 +77,6 @@ class UploadDBFAdmin(admin.ModelAdmin):
         nome_arquivo = os.path.basename(obj.arquivo.name).lower()
         caminho_arquivo = obj.arquivo.path
 
-        # --------- CSV (cobertura vacinal) ---------
         if nome_arquivo.endswith('.csv'):
             try:
                 df = pd.read_csv(caminho_arquivo, sep=';', encoding='utf-8', low_memory=False)
@@ -110,7 +109,6 @@ class UploadDBFAdmin(admin.ModelAdmin):
                 print(f"Erro ao processar CSV de Vacinas: {e}")
             return
 
-        # --------- DBF / XLSX (SINAN) ---------
         try:
             if nome_arquivo.endswith('.dbf'):
                 resultado = processar_arquivo_dbf(caminho_arquivo, nome_original=nome_arquivo)
