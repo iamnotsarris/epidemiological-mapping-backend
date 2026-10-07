@@ -3,11 +3,9 @@ import os
 import google.generativeai as genai
 from .utils.embedding_manager import EmbeddingManager
 
-# Configuração do PaLM
 genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
 model = genai.GenerativeModel('gemini-embedding-001')
 
-# Instância global do EmbeddingManager
 embedding_manager = EmbeddingManager(os.getenv('GOOGLE_API_KEY'))
 
 
@@ -22,10 +20,8 @@ def chat():
         data = request.json
         user_message = data.get('message', '')
 
-        # Busca o contexto relevante usando embeddings
         context = embedding_manager.search_query(user_message)
 
-        # Modifica o prompt para incluir o contexto encontrado
         prompt = f"""Com base apenas no seguinte contexto: 
         {context}
 
@@ -33,7 +29,6 @@ def chat():
 
         Responda de forma concisa e direta, em português."""
 
-        # Gera a resposta usando o modelo
         response = model.generate_content(prompt)
 
         return jsonify({
