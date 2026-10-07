@@ -6,6 +6,7 @@ from api.models import (
 )
 from dbfread import DBF
 from datetime import datetime
+import unicodedata
 
 MAPEA_ENDEMIAS = {
     'deng': PacienteDengue,
@@ -22,7 +23,6 @@ MAPEA_ENDEMIAS = {
     'coberturavacinal': CoberturaVacinal,
 }
 
-# 1. MAPEAMENTO DE BAIRRO PARA NOME DA UBS (Baseado no seu Frontend)
 BAIRRO_PARA_UBS_NOME = {
     "CENTRO": "UBS Floriano (Centro)",
     "SAMBAIBA": "UBS Dirceu Arcoverde",
@@ -58,26 +58,58 @@ BAIRRO_PARA_UBS_NOME = {
     "PEDRO SIMPLICIO": "UBS Pedro Simplício",
 }
 
-# 2. MAPEAMENTO DE NOME DA UBS PARA CNES (id_unidade)
-# Atualize estes números com os CNES reais do seu banco de dados se não baterem!
 UBS_NOME_PARA_CNES = {
     "UBS Theodoro F. Sobral": "2778319",
     "UBS Floriano (Centro)": "2778432",
-    # Preencha os demais CNES conforme você criar os usuários UBS no painel:
-    "UBS Dirceu Arcoverde": "CNES_AQUI",
-    "UBS José Paraguassú": "CNES_AQUI",
-    "UBS Pedro Simplício": "CNES_AQUI",
-    "UBS Alfredo de Carvalho": "CNES_AQUI",
-    "UBS Luiz Tavares": "CNES_AQUI",
-    "UBS Camilo Filho": "CNES_AQUI",
-    "UBS N. Sra. da Guia": "CNES_AQUI",
-    "UBS Raimundo Filho": "CNES_AQUI",
-    "UBS Paulo Kalume": "CNES_AQUI",
-    "UBS João Elias Oka": "CNES_AQUI",
-    "UBS Viana de Carvalho": "CNES_AQUI",
-    "UBS Paulo Martins": "CNES_AQUI",
-    "UBS Jasmina Bucar": "CNES_AQUI",
+    "UBS Dirceu Arcoverde": "2778041",
+    "UBS José Paraguassú": "5459583",
+    "UBS Pedro Simplício": "2778254",
+    "UBS Alfredo de Carvalho": "5943817",
+    "UBS Luiz Tavares": "2364654",
+    "UBS Camilo Filho": "2777916",
+    "UBS N. Sra. da Guia": "2364670",
+    "UBS Raimundo Filho": "2364697",
+    "UBS Paulo Kalume": "2778246",
+    "UBS João Elias Oka": "2364689",
+    "UBS Viana de Carvalho": "2778335",
+    "UBS Paulo Martins": "2609630",
+    "UBS Jasmina Bucar": "2995395",
+    "UBS do PAM": "2364611",
+    "UBS Amolar": "2777843",
+    "UBS Helvidio H. Barros": "2778157",
+    "UBS L3": "2364638",
+    "UBS Leonardo Dudima": "2778181",
+    "UBS Margarida Alves Almeida": "2669129",
+    "UBS Morrinhos": "2364662",
+    "UBS Protasio de Moraes Barbosa": "2778289",
+    "UBS Santa Cruz": "2778092",
+    "UBS VEREDA GRANDE II": "2364646",
 }
+
+UNIDADE_NOTIFICADORA_PARA_UBS = {
+    "2320498": "2778432",
+    "7654321": "2778254",
+    "8765432": "2364689",
+
+    "HOSPITAL TIBERIO NUNES":   "2778432",
+    "HOSPITAL TIBÉRIO NUNES":   "2778432",
+    "CAPS ALCOOL E DROGAS":     "2778254",
+    "CAPS AD":                  "2778254",
+    "CAPS II":                  "2364689",
+}
+
+
+def normalizar_texto(texto):
+    """Remove acentos e joga pra maiúsculo. Usado para chaves de dicionário."""
+    if texto is None:
+        return ""
+    return (
+        unicodedata.normalize('NFKD', str(texto))
+        .encode('ASCII', 'ignore')
+        .decode('utf-8')
+        .upper()
+        .strip()
+    )
 
 
 def extrair_bairro(endereco_string):
@@ -97,11 +129,7 @@ def extrair_bairro(endereco_string):
                and len(ultima) <= 10))
 
     bairro_bruto = partes[-2] if (eh_cep and len(partes) >= 2) else partes[-1]
-
-    # Normaliza: Remove acentos e joga pra maiúsculo (importante para bater com o dicionário)
-    import unicodedata
-    bairro_normalizado = unicodedata.normalize('NFKD', bairro_bruto).encode('ASCII', 'ignore').decode('utf-8').upper()
-    return bairro_normalizado
+    return normalizar_texto(bairro_bruto)
 
 
 def processar_registros(records, nome_arquivo):
@@ -115,6 +143,10 @@ def processar_registros(records, nome_arquivo):
 
     if not modelo_alvo:
         return {"status": "erro", "mensagem": "Endemia não reconhecida pelo nome do arquivo."}
+
+    # ------------------------------------------------------------------
+    # Helpers internos
+    # ------------------------------------------------------------------
 
     def formatar_data(valor_data):
         if not valor_data:
@@ -134,37 +166,6 @@ def processar_registros(records, nome_arquivo):
         except (ValueError, TypeError, AttributeError):
             return None
 
-    def resolver_id_unidade(record):
-        """Pega ID_UNIDADE do DBF ou tenta inferir pelo bairro (só dengue)."""
-        valor = record.get('ID_UNIDADE')
-        if valor is None:
-            valor = record.get('ID_UNID')
-
-        # Converte qualquer tipo (int, float, str, None) para string limpa
-        if valor is None:
-            id_original = ''
-        else:
-            id_original = str(valor).strip()
-            # Se vier "2778432.0" de float, tira o ".0"
-            if id_original.endswith('.0'):
-                id_original = id_original[:-2]
-            if id_original.lower() in ('none', 'nan', 'null', ''):
-                id_original = ''
-
-        if id_original:
-            return id_original
-
-        # Fallback: tenta inferir pelo bairro (só faz sentido para dengue)
-        bairro = extrair_bairro(_montar_endereco(record))
-        if bairro:
-            nome_ubs = BAIRRO_PARA_UBS_NOME.get(bairro)
-            if nome_ubs:
-                cnes = UBS_NOME_PARA_CNES.get(nome_ubs)
-                if cnes and cnes != 'CNES_AQUI':
-                    return cnes
-
-        return None
-
     def _montar_endereco(record):
         partes = [
             record.get('NM_LOGRADO'), record.get('NM_NUMERO'),
@@ -172,6 +173,64 @@ def processar_registros(records, nome_arquivo):
             record.get('NU_CEP'),
         ]
         return ", ".join(str(p).strip() for p in partes if p and str(p).strip())
+
+    def _limpar_cnes(valor):
+        """Converte qualquer coisa em string limpa de CNES (sem .0, sem nan)."""
+        if valor is None:
+            return None
+        s = str(valor).strip()
+        if s.endswith('.0'):
+            s = s[:-2]
+        if s.lower() in ('none', 'nan', 'null', ''):
+            return None
+        return s
+
+    def resolver_id_unidade(record):
+        """
+        Prioridade:
+          1) Bairro de RESIDÊNCIA → UBS do território  (mais correto)
+          2) ID_UNIDADE — se for hospital/CAPS conhecido, redireciona p/ UBS do território
+             2a) tenta match por CNES
+             2b) tenta match por NM_UBS (normalizado)
+          3) ID_UNIDADE cru (assume que já é uma UBS)
+        """
+
+        # ---------- 1) Bairro de residência manda ----------
+        bairro = extrair_bairro(_montar_endereco(record))
+        if bairro:
+            nome_ubs = BAIRRO_PARA_UBS_NOME.get(bairro)
+            if nome_ubs:
+                cnes = UBS_NOME_PARA_CNES.get(nome_ubs)
+                if cnes and cnes != 'CNES_AQUI':
+                    return cnes
+            # Bairro não mapeado → cai pro passo 2
+            # (útil pra você ir ampliando o BAIRRO_PARA_UBS_NOME com o tempo)
+            print(f"[AVISO] Bairro não mapeado: {bairro!r}")
+
+        # ---------- 2) ID_UNIDADE ----------
+        valor = record.get('ID_UNIDADE')
+        if valor is None:
+            valor = record.get('ID_UNID')
+
+        id_original = _limpar_cnes(valor)
+
+        # 2a) Match direto por CNES
+        if id_original and id_original in UNIDADE_NOTIFICADORA_PARA_UBS:
+            return UNIDADE_NOTIFICADORA_PARA_UBS[id_original]
+
+        # 2b) Match por NOME da unidade (NM_UBS), normalizado
+        nm_ubs_raw = record.get('NM_UBS')
+        if nm_ubs_raw:
+            chave_nome = normalizar_texto(nm_ubs_raw)
+            if chave_nome in UNIDADE_NOTIFICADORA_PARA_UBS:
+                return UNIDADE_NOTIFICADORA_PARA_UBS[chave_nome]
+
+        # ---------- 3) ID_UNIDADE cru ----------
+        return id_original  # pode ser None
+
+    # ------------------------------------------------------------------
+    # Loop principal
+    # ------------------------------------------------------------------
 
     registros_para_salvar = []
 
