@@ -1,8 +1,12 @@
 from django.contrib.auth.models import Group, User
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import PacienteDengue, PacienteTuberculose, PacienteSifilis, PacienteChagas, PacienteViolenciaDomestica, \
-    PacienteHans, PacienteHepatite, PacienteAnimaisPec, PacienteIntoxicacao, PacienteLeish, PacienteAidsAdulto, CoberturaVacinal
+from .models import (
+    PacienteDengue, PacienteTuberculose, PacienteSifilis, PacienteChagas,
+    PacienteViolenciaDomestica, PacienteHans, PacienteHepatite,
+    PacienteAnimaisPec, PacienteIntoxicacao, PacienteLeish,
+    PacienteAidsAdulto, CoberturaVacinal,
+)
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -72,12 +76,46 @@ class PacienteAidsAdultoSerializer(serializers.ModelSerializer):
         model = PacienteAidsAdulto
         fields = "__all__"
 
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Injeta role / id_unidade / username DENTRO do payload do JWT
+    (não só na resposta do login). Assim o front consegue ler
+    direto do token decodificado.
+    """
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        token['username'] = user.username
+        token['first_name'] = user.first_name
+
+        perfil = getattr(user, 'perfil', None)
+        if perfil:
+            token['role'] = perfil.role
+            token['id_unidade'] = perfil.id_unidade
+        else:
+            token['role'] = 'ADMIN' if user.is_superuser else 'UBS'
+            token['id_unidade'] = None
+
+        return token
+
     def validate(self, attrs):
         data = super().validate(attrs)
+
         data['username'] = self.user.username
         data['first_name'] = self.user.first_name
+
+        perfil = getattr(self.user, 'perfil', None)
+        if perfil:
+            data['role'] = perfil.role
+            data['id_unidade'] = perfil.id_unidade
+        else:
+            data['role'] = 'ADMIN' if self.user.is_superuser else 'UBS'
+            data['id_unidade'] = None
+
         return data
+
 
 class CoberturaVacinalSerializer(serializers.ModelSerializer):
     class Meta:

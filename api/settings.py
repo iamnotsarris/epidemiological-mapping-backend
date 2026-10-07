@@ -23,9 +23,10 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "0.0.0.0",
+    "0.0.0.0:8000",
     "api-data-sigma-lovat.vercel.app",
     "api-data-backend.onrender.com",
-    "192.168.137.1"
+    "192.168.137.1",
 ]
 
 
@@ -145,7 +146,10 @@ CORS_ALLOW_ALL_ORIGINS = True
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.AllowAny',
+    ),
 }
 
 SIMPLE_JWT = {
