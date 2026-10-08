@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 router = routers.DefaultRouter()
 router.register(r'dengue', views.PacienteDengueViewSet, basename='dengue')
@@ -32,4 +33,9 @@ urlpatterns = [
     # Rotas do Token
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # Rotas do Swagger
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    # Rota da Interface Gráfica do Swagger UI
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]
