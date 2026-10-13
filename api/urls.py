@@ -29,6 +29,7 @@ urlpatterns = [
     path('api/chat/', views.chat_suporte, name='chat_suporte'),
     path('api/upload/', views.upload_arquivo, name='upload_arquivo'),
     path('api/sincronizar-governo/', views.sincronizar_api_governo, name='sincronizar_api_governo'),
+    path('api/exportar/<str:doenca>/', views.exportar_dados, name='exportar_dados'),
 
     # Rotas do Token
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),

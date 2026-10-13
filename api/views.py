@@ -34,6 +34,8 @@ from .serializers import (
 from .utils.assistente import TOOLS, executar_funcao
 from api.utils.embedding_manager import EmbeddingManager
 from .utils.importador_dbf import processar_arquivo_dbf, processar_registros
+from django.http import HttpResponse
+from .utils.exportador import exportar, FORMATOS_SUPORTADOS
 
 load_dotenv()
 
@@ -231,6 +233,83 @@ def casos_por_bairro(request):
             contagem[bairro] = contagem.get(bairro, 0) + 1
 
     return Response(contagem)
+
+@api_view(['GET'])
+def exportar_dados(request, doenca):
+    """
+    Exporta dados de uma doença em CSV, XLSX ou DBF.
+
+    Query params:
+      - formato: csv | xlsx | dbf   (default: csv)
+      - ano:     filtra por ano     (opcional)
+
+    Respeita o isolamento UBS (usuário logado como UBS só vê o próprio CNES).
+    """
+    from .utils.assistente import DOENCAS, _normalizar_doenca
+
+    chave = _normalizar_doenca(doenca)
+    if not chave:
+        return Response(
+            {
+                "erro": f"Doença '{doenca}' não reconhecida.",
+                "disponiveis": list(DOENCAS.keys()),
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    formato = (request.query_params.get("formato") or "csv").lower()
+    if formato not in FORMATOS_SUPORTADOS:
+        return Response(
+            {
+                "erro": f"Formato '{formato}' inválido.",
+                "disponiveis": list(FORMATOS_SUPORTADOS),
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    info = DOENCAS[chave]
+    qs = info["modelo"].objects.all()
+
+    # Isolamento por UBS (mesma regra do IsolamentoUBSMixin)
+    perfil = getattr(request.user, "perfil", None)
+    if (
+        request.user.is_authenticated
+        and perfil
+        and perfil.role == "UBS"
+        and info.get("campo_ubs")
+    ):
+        cnes = str(perfil.id_unidade or "").strip()
+        if cnes:
+            qs = qs.annotate(
+                _id_limpo=Trim(info["campo_ubs"])
+            ).filter(_id_limpo=cnes)
+
+    # Filtro por ano
+    ano = request.query_params.get("ano")
+    if ano:
+        try:
+            qs = qs.filter(**{info["campo_ano"]: int(ano)})
+        except (ValueError, TypeError):
+            return Response(
+                {"erro": f"Ano inválido: {ano}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    try:
+        conteudo, mimetype, ext = exportar(qs, info["modelo"], formato)
+    except ImportError as e:
+        return Response({"erro": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return Response(
+            {"erro": f"Falha ao exportar: {e}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    filename = f"{chave}_{ano or 'todos'}.{ext}"
+    response = HttpResponse(conteudo, content_type=mimetype)
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @api_view(['GET'])
