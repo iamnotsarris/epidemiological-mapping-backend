@@ -98,6 +98,9 @@ class CoberturaVacinal(models.Model):
     meta_otima = models.FloatField(default=95.0)
     data_atualizacao = models.DateField(auto_now=True)
 
+    class Meta:
+        unique_together = ('ano', 'imunobiologico')
+
     def __str__(self):
         return f"{self.imunobiologico} ({self.ano}) - {self.cobertura_percentual}%"
 
