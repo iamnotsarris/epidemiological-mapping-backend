@@ -60,6 +60,7 @@ class PacienteHepatite(models.Model):
     nu_notific = models.TextField(null=True, blank=True)
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
+    hospital = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
 
 class PacienteAnimaisPec(models.Model):
@@ -71,16 +72,22 @@ class PacienteAnimaisPec(models.Model):
 
 class PacienteIntoxicacao(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
+    nm_ubs = models.TextField(null=True, blank=True)
+    hospital = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
 class PacienteLeish(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
+    nm_ubs = models.TextField(null=True, blank=True)
+    hospital = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
 class PacienteAidsAdulto(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
+    nm_ubs = models.TextField(null=True, blank=True)
+    hospital = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
