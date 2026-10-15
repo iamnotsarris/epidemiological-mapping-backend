@@ -108,20 +108,20 @@ class PacienteAnimaisPecAdmin(BaseExportAdmin):
 
 @admin.register(PacienteIntoxicacao)
 class PacienteIntoxicacaoAdmin(BaseExportAdmin):
-    list_display = ("id_unidade", "ano_notific", "nu_notific")
-    search_fields = ("id_unidade", "ano_notific", "nu_notific")
+    list_display = ("id_unidade", "nm_ubs", "hospital", "ano_notific", "nu_notific")
+    search_fields = ("id_unidade", "nm_ubs", "hospital", "ano_notific", "nu_notific")
 
 
 @admin.register(PacienteLeish)
 class PacienteLeishAdmin(BaseExportAdmin):
-    list_display = ("id_unidade", "ano_notific", "nu_notific")
-    search_fields = ("id_unidade", "ano_notific", "nu_notific")
+    list_display = ("id_unidade", "nm_ubs", "hospital", "ano_notific", "nu_notific")
+    search_fields = ("id_unidade", "nm_ubs", "hospital", "ano_notific", "nu_notific")
 
 
 @admin.register(PacienteAidsAdulto)
 class PacienteAidsAdultoAdmin(BaseExportAdmin):
-    list_display = ("id_unidade", "ano_notific", "nu_notific")
-    search_fields = ("id_unidade", "ano_notific", "nu_notific")
+    list_display = ("id_unidade", "nm_ubs", "hospital", "ano_notific", "nu_notific")
+    search_fields = ("id_unidade", "nm_ubs", "hospital", "ano_notific", "nu_notific")
 
 
 @admin.register(CoberturaVacinal)
