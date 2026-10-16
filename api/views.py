@@ -63,10 +63,6 @@ class ExportThrottle(UserRateThrottle):
     """Exportação é pesada: limita a 30 por hora."""
     scope = 'export'
 
-
-# ============================================================
-# MIXIN DE ISOLAMENTO (com bypass scope=all corrigido)
-# ============================================================
 class IsolamentoUBSMixin:
     """
     - SEM LOGIN (visitante)  → vê TUDO (modo público)
