@@ -136,7 +136,12 @@ def extrair_bairro(endereco_string):
     return normalizar_texto(bairro_bruto)
 
 
-def processar_registros(records, nome_arquivo):
+def processar_registros(records, nome_arquivo, cnes_permitido=None):
+    """
+    cnes_permitido: se fornecido (str), apenas registros cujo id_unidade
+                    resolvido seja igual a esse CNES serão inseridos.
+                    Útil para restringir uploads de UBS.
+    """
     nome_arquivo = nome_arquivo.lower()
     modelo_alvo = None
 
@@ -222,9 +227,14 @@ def processar_registros(records, nome_arquivo):
         return id_original
 
     registros_para_salvar = []
+    registros_ignorados = 0
 
     for record in records:
         id_unidade = resolver_id_unidade(record)
+
+        if cnes_permitido and str(id_unidade).strip() != str(cnes_permitido).strip():
+            registros_ignorados += 1
+            continue
 
         if modelo_alvo == PacienteDengue:
             nova_linha = PacienteDengue(
@@ -319,10 +329,14 @@ def processar_registros(records, nome_arquivo):
         registros_para_salvar.append(nova_linha)
 
     modelo_alvo.objects.bulk_create(registros_para_salvar, ignore_conflicts=True)
-    return {"status": "sucesso", "registros_inseridos": len(registros_para_salvar)}
+    return {
+        "status": "sucesso",
+        "registros_inseridos": len(registros_para_salvar),
+        "registros_ignorados": registros_ignorados,
+    }
 
 
-def processar_arquivo_dbf(caminho_arquivo, nome_original=None):
+def processar_arquivo_dbf(caminho_arquivo, nome_original=None, cnes_permitido=None):
     nome_arquivo = (nome_original or os.path.basename(caminho_arquivo)).lower()
     tabela = DBF(caminho_arquivo, encoding='iso-8859-1', load=True, ignore_missing_memofile=True)
-    return processar_registros(list(tabela), nome_arquivo)
+    return processar_registros(list(tabela), nome_arquivo, cnes_permitido=cnes_permitido)
