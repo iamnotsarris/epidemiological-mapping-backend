@@ -6,13 +6,33 @@ class PacienteDengue(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
     nome_paciente = models.CharField(max_length=100, null=True, blank=True)
     endereco = models.TextField(null=True, blank=True)
-    data_notificacao = models.DateField(null=True, blank=True)
-    data_pri_sintoma = models.DateField(null=True, blank=True)
-    data_nascimento = models.DateField(null=True, blank=True)
     id_agravo = models.TextField(null=True, blank=True)
     hospital = models.TextField(null=True, blank=True)
     cs_sexo = models.TextField(null=True, blank=True)
     classi_fin = models.TextField(null=True, blank=True)
+    data_notificacao = models.DateField(null=True, blank=True)
+    data_notificacao_precisao = models.CharField(
+        max_length=1,
+        choices=[('D', 'Dia'), ('M', 'Mês'), ('Y', 'Ano'), ('N', 'Não informado')],
+        default='D',
+        null=True, blank=True,
+    )
+
+    data_pri_sintoma = models.DateField(null=True, blank=True)
+    data_pri_sintoma_precisao = models.CharField(
+        max_length=1,
+        choices=[('D', 'Dia'), ('M', 'Mês'), ('Y', 'Ano'), ('N', 'Não informado')],
+        default='D',
+        null=True, blank=True,
+    )
+
+    data_nascimento = models.DateField(null=True, blank=True)
+    data_nascimento_precisao = models.CharField(
+        max_length=1,
+        choices=[('D', 'Dia'), ('M', 'Mês'), ('Y', 'Ano'), ('N', 'Não informado')],
+        default='D',
+        null=True, blank=True,
+    )
 
     def __str__(self):
         return f"{self.numero_notificacao} - {self.nome_paciente}"
@@ -33,10 +53,17 @@ class PacienteSifilis(models.Model):
     un_saude=models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
     mu_residen=models.TextField(null=True, blank=True)
-    dt_notific=models.DateField(null=True, blank=True)
     id_agravo=models.TextField(null=True, blank=True)
     nm_pacient=models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
+
+    data_notificacao = models.DateField(null=True, blank=True)
+    data_notificacao_precisao = models.CharField(
+        max_length=1,
+        choices=[('D', 'Dia'), ('M', 'Mês'), ('Y', 'Ano'), ('N', 'Não informado')],
+        default='D',
+        null=True, blank=True,
+    )
 
 class PacienteChagas(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
