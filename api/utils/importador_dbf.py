@@ -87,6 +87,7 @@ UBS_NOME_PARA_CNES = {
 }
 
 UNIDADE_NOTIFICADORA_PARA_UBS = {
+    # Códigos de Hospitais/CAPS/Siglas
     "2320498": "2778432",
     "7654321": "2778254",
     "8765432": "2364689",
@@ -97,7 +98,7 @@ UNIDADE_NOTIFICADORA_PARA_UBS = {
     "HOSPITAL TIBERIO NUNES": "2778432",
     "HOSPITAL REGIONAL TIBERIO NUNES": "2778432",
     "HOSPITAL JOAO PAULO II": "2778157",
-    "HOSPITAL REGIONAL JOÃO PAULO II": "2778157",
+    "HOSPITAL REGIONAL JOAO PAULO II": "2778157",
     "CAPS ALCOOL E DROGAS": "2778254",
     "CAPS AD": "2778254",
     "CAPS II": "2364689",
@@ -110,6 +111,38 @@ UNIDADE_NOTIFICADORA_PARA_UBS = {
     "UPA ADELMAR PEREIRA": "2778335",
     "UPA DR. ADELMAR PEREIRA": "2778335",
     "UPA DR ADELMAR PEREIRA": "2778335",
+
+    # Nomes das UBS diretos (para caso o DBF envie texto no ID_UNIDADE)
+    "UBS CAMILO FILHO": "2777916",
+    "UBS FLORIANO": "2778432",
+    "UBS DIRCEU ARCOVERDE": "2778041",
+    "UBS DO PAM": "2364611",
+    "PAM": "2364611",
+    "UBS HELVIDIO DE HOLANDA BARROS": "2778157",
+    "UBS HELVIDIO": "2778157",
+    "UBS JASMINA BUCAR": "2995395",
+    "UBS JOAO ELIAS OKA": "2364689",
+    "UBS JOSE PARAGUASU": "5459583",
+    "UBS JOSE PARAGUASSU": "5459583",
+    "UBS L3": "2364638",
+    "UBS LEONARDO DUDIMA": "2778181",
+    "UBS LUIZ TAVARES": "2364654",
+    "UBS MARGARIDA ALVES": "2669129",
+    "UBS MARGARIDA ALVES DE ALMEIDA": "2669129",
+    "UBS MORRINHOS": "2364662",
+    "UBS NOSSA SENHORA DA GUIA": "2364670",
+    "UBS PAULO KALUME": "2778246",
+    "UBS PAULO MARTINS": "2609630",
+    "UBS PEDRO SIMPLICIO": "2778254",
+    "UBS PROTASIO DE MORAES": "2778289",
+    "UBS RAIMUNDO FILHO": "2364697",
+    "UBS SANTA CRUZ": "2778092",
+    "UBS THEODORO": "2778319",
+    "UBS THEODORO FERREIRA SOBRAL": "2778319",
+    "UBS VEREDA GRANDE": "2364646",
+    "UBS VEREDA GRANDE II": "2364646",
+    "UBS VIANA CARVALHO": "2778335",
+    "UBS VIANA DE CARVALHO": "2778335",
 }
 
 
@@ -313,11 +346,12 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
         """
         Prioridade:
           1) Bairro de RESIDÊNCIA → UBS do território  (mais correto)
-          2) ID_UNIDADE — se for hospital/CAPS conhecido, redireciona p/ UBS do território
-             2a) tenta match por CNES
-             2b) tenta match por NM_UBS (normalizado)
-          3) ID_UNIDADE cru (assume que já é uma UBS)
+          2) ID_UNIDADE — se for hospital/CAPS/nome conhecido, redireciona p/ UBS
+             2a) tenta match por CNES ou nome normalizado
+          3) NM_UBS — tenta match por nome normalizado
+          4) ID_UNIDADE cru (assume que já é uma UBS)
         """
+        # 1. Tenta pelo Bairro
         bairro = extrair_bairro(_montar_endereco(record))
         if bairro:
             nome_ubs = BAIRRO_PARA_UBS_NOME.get(bairro)
@@ -327,21 +361,31 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
                     return cnes
             print(f"[AVISO] Bairro não mapeado: {bairro!r}")
 
+        # 2. Tenta pelo ID_UNIDADE
         valor = record.get('ID_UNIDADE')
         if valor is None:
             valor = record.get('ID_UNID')
 
         id_original = _limpar_cnes(valor)
 
-        if id_original and id_original in UNIDADE_NOTIFICADORA_PARA_UBS:
-            return UNIDADE_NOTIFICADORA_PARA_UBS[id_original]
+        if id_original:
+            # Match exato
+            if id_original in UNIDADE_NOTIFICADORA_PARA_UBS:
+                return UNIDADE_NOTIFICADORA_PARA_UBS[id_original]
 
+            # Match normalizado (tira acento, põe em maiúsculo)
+            id_normalizado = normalizar_texto(id_original)
+            if id_normalizado in UNIDADE_NOTIFICADORA_PARA_UBS:
+                return UNIDADE_NOTIFICADORA_PARA_UBS[id_normalizado]
+
+        # 3. Tenta pelo NM_UBS
         nm_ubs_raw = record.get('NM_UBS')
         if nm_ubs_raw:
             chave_nome = normalizar_texto(nm_ubs_raw)
             if chave_nome in UNIDADE_NOTIFICADORA_PARA_UBS:
                 return UNIDADE_NOTIFICADORA_PARA_UBS[chave_nome]
 
+        # 4. Retorna o ID original se não achar nada
         return id_original
 
     registros_para_salvar = []
@@ -357,7 +401,7 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
         if modelo_alvo == PacienteDengue:
             # Fallbacks de ano: NU_ANO (campo direto) e SEM_NOT / SEM_PRI (YYYYWW)
             ano_notif = _parse_ano(record.get('NU_ANO')) or _parse_ano(record.get('SEM_NOT'))
-            ano_sint  = _parse_ano(record.get('SEM_PRI'))
+            ano_sint = _parse_ano(record.get('SEM_PRI'))
 
             d_not, p_not = parse_data_com_precisao(record.get('DT_NOTIFIC'), ano_notif)
             d_sin, p_sin = parse_data_com_precisao(record.get('DT_SIN_PRI'), ano_sint)
