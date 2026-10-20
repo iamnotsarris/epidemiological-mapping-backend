@@ -54,11 +54,14 @@ class BaseExportAdmin(admin.ModelAdmin):
 @admin.register(PacienteDengue)
 class PacienteDengueAdmin(BaseExportAdmin):
     list_display = (
-        "numero_notificacao", "id_unidade", "nome_paciente", "data_notificacao",
-        "endereco", "data_nascimento", "data_pri_sintoma", "id_agravo",
-        "hospital", "cs_sexo", "classi_fin",
+        "numero_notificacao", "id_unidade", "nome_paciente",
+        "data_notificacao", "data_notificacao_precisao",
+        "data_nascimento", "data_nascimento_precisao",
+        "data_pri_sintoma", "data_pri_sintoma_precisao",
+        "id_agravo", "hospital", "cs_sexo", "classi_fin",
     )
-    search_fields = ("endereco", "id_unidade")
+    list_filter = ("data_notificacao_precisao", "data_nascimento_precisao",
+                   "data_pri_sintoma_precisao")
 
 
 @admin.register(PacienteTuberculose)
@@ -71,8 +74,10 @@ class PacienteTuberculoseAdmin(BaseExportAdmin):
 class PacienteSifilisAdmin(BaseExportAdmin):
     list_display = (
         "nu_notific", "id_unidade", "un_saude", "nm_ubs", "mu_residen",
-        "dt_notific", "ano_notific", "id_agravo", "nm_pacient",
+        "data_notificacao", "data_notificacao_precisao",
+        "ano_notific", "id_agravo", "nm_pacient",
     )
+    list_filter = ("data_notificacao_precisao",)
     search_fields = ("nu_notific", "id_agravo", "id_unidade")
 
 

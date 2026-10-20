@@ -22,9 +22,32 @@ class GroupSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class PacienteDengueSerializer(serializers.ModelSerializer):
+    data_notificacao_display = serializers.SerializerMethodField()
+    data_pri_sintoma_display = serializers.SerializerMethodField()
+    data_nascimento_display  = serializers.SerializerMethodField()
+
     class Meta:
         model = PacienteDengue
         fields = "__all__"
+
+    _MESES = ['jan','fev','mar','abr','mai','jun',
+              'jul','ago','set','out','nov','dez']
+
+    def _fmt(self, data, precisao):
+        if not data or precisao == 'N':
+            return None
+        if precisao == 'Y':
+            return str(data.year)
+        if precisao == 'M':
+            return f"{self._MESES[data.month-1]}/{data.year}"
+        return data.strftime('%d/%m/%Y')
+
+    def get_data_notificacao_display(self, obj):
+        return self._fmt(obj.data_notificacao, obj.data_notificacao_precisao)
+    def get_data_pri_sintoma_display(self, obj):
+        return self._fmt(obj.data_pri_sintoma, obj.data_pri_sintoma_precisao)
+    def get_data_nascimento_display(self, obj):
+        return self._fmt(obj.data_nascimento, obj.data_nascimento_precisao)
 
 class PacienteTuberculoseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,9 +55,26 @@ class PacienteTuberculoseSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class PacienteSifilisSerializer(serializers.ModelSerializer):
+    data_notificacao_display = serializers.SerializerMethodField()
+
     class Meta:
         model = PacienteSifilis
         fields = "__all__"
+
+    _MESES = ['jan','fev','mar','abr','mai','jun',
+              'jul','ago','set','out','nov','dez']
+
+    def _fmt(self, data, precisao):
+        if not data or precisao == 'N':
+            return None
+        if precisao == 'Y':
+            return str(data.year)
+        if precisao == 'M':
+            return f"{self._MESES[data.month-1]}/{data.year}"
+        return data.strftime('%d/%m/%Y')
+
+    def get_data_notificacao_display(self, obj):
+        return self._fmt(obj.data_notificacao, obj.data_notificacao_precisao)
 
 class PacienteChagasSerializer(serializers.ModelSerializer):
     class Meta:

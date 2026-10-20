@@ -5,7 +5,7 @@ from api.models import (
     PacienteIntoxicacao, PacienteLeish, PacienteAidsAdulto, CoberturaVacinal,
 )
 from dbfread import DBF
-from datetime import datetime
+from datetime import datetime, date
 import unicodedata
 
 MAPEA_ENDEMIAS = {
@@ -90,11 +90,10 @@ UNIDADE_NOTIFICADORA_PARA_UBS = {
     "2320498": "2778432",
     "7654321": "2778254",
     "8765432": "2364689",
-    "3036200": "2364689", # <- CENTRO DE TESTAGEM E ACONS DSTHIVAIDS (CTA)
-    "2365146": "2778432", # <- TIBERIU NUNES
-    "6137504": "2778157", # <- JOAO PAULO II
-    "5005671": "2778432", # <- CENTRO DE REFERENCIA MUNICIPAL NO TRATAMENTO HANSENIASE E TUBERCULOSE
-
+    "3036200": "2364689",
+    "2365146": "2778432",
+    "6137504": "2778157",
+    "5005671": "2778432",
     "HOSPITAL TIBERIO NUNES": "2778432",
     "HOSPITAL JOAO PAULO II": "2778157",
     "CAPS ALCOOL E DROGAS": "2778254",
@@ -136,6 +135,135 @@ def extrair_bairro(endereco_string):
     return normalizar_texto(bairro_bruto)
 
 
+# ============================================================
+# PARSERS DE DATA (com precisão parcial + sentinelas)
+# ============================================================
+
+# Sentinelas clássicas de "data nula" que aparecem em DBF/Excel/SINAN
+DATA_SENTINELA_INVALIDA = {
+    "30/12/1899", "31/12/1899",
+    "1899-12-30", "1899-12-31",
+    "18991230", "18991231",
+    "0000-00-00", "00000000",
+}
+
+
+def _parse_data_full(valor):
+    """
+    Converte um valor qualquer (datetime, date, str, DBF YYYYMMDD) em datetime.date.
+    Retorna None para sentinelas e valores inválidos/parciais.
+    """
+    if valor is None:
+        return None
+
+    # datetime/date nativo (dbfread retorna date; pandas retorna Timestamp/NaT)
+    if hasattr(valor, "year") and hasattr(valor, "month") and hasattr(valor, "day"):
+        try:
+            d = date(int(valor.year), int(valor.month), int(valor.day))
+        except (ValueError, AttributeError, TypeError):
+            return None
+        # Sentinela clássica: 1899-12-30 / 1899-12-31
+        if d.year == 0:
+            return None
+        if d.year == 1899 and d.month == 12 and d.day in (30, 31):
+            return None
+        return d
+
+    s = str(valor).strip()
+    if not s or s.lower() in ("nat", "nan", "null", "none"):
+        return None
+    s = s.split(" ")[0]  # remove hora ("2025-06-05 00:00:00" → "2025-06-05")
+    if s in DATA_SENTINELA_INVALIDA:
+        return None
+
+    # DBF bruto: YYYYMMDD (8 dígitos)
+    if len(s) == 8 and s.isdigit():
+        try:
+            d = date(int(s[0:4]), int(s[4:6]), int(s[6:8]))
+        except ValueError:
+            return None
+        if d.year == 0 or (d.year == 1899 and d.month == 12 and d.day in (30, 31)):
+            return None
+        return d
+
+    # ISO YYYY-MM-DD
+    if len(s) == 10 and s[4] == "-" and s[7] == "-":
+        try:
+            return datetime.strptime(s, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    # BR DD/MM/YYYY
+    if len(s) == 10 and s[2] == "/" and s[5] == "/":
+        try:
+            return datetime.strptime(s, "%d/%m/%Y").date()
+        except ValueError:
+            pass
+
+    # Fallback: US/outros
+    for fmt in ("%m/%d/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+
+    return None
+
+
+def _parse_ano(valor):
+    """
+    Extrai apenas o ano de um valor qualquer.
+    Aceita: int/float (2025, 2025.0), str "2025", "YYYYWW" (202523 → 2025).
+    Retorna None se não der pra confiar.
+    """
+    if valor is None:
+        return None
+
+    if hasattr(valor, "year"):
+        try:
+            ano = int(valor.year)
+            return ano if 1900 <= ano <= 2100 else None
+        except (ValueError, TypeError):
+            return None
+
+    s = str(valor).strip()
+    if not s or s.lower() in ("nat", "nan", "null", "none"):
+        return None
+    if s.endswith(".0"):
+        s = s[:-2]
+    if len(s) >= 4 and s[:4].isdigit():
+        ano = int(s[:4])
+        if 1900 <= ano <= 2100:
+            return ano
+    return None
+
+
+def parse_data_com_precisao(valor, fallback_ano=None):
+    """
+    Retorna (data_iso_str_ou_None, precisao).
+    precisao: 'D'=dia, 'M'=mês, 'Y'=ano, 'N'=não informado.
+    """
+    d = _parse_data_full(valor)
+    if d is not None:
+        return d.strftime("%Y-%m-%d"), "D"
+
+    if fallback_ano is not None:
+        try:
+            ano = int(fallback_ano)
+            if 1900 <= ano <= 2100:
+                return f"{ano:04d}-01-01", "Y"
+        except (ValueError, TypeError):
+            pass
+
+    return None, "N"
+
+
+def formatar_data(valor_data):
+    """Compat: retorna só a string ISO. Usado em campos sem precisão (sifilis etc.)."""
+    d = _parse_data_full(valor_data)
+    return d.strftime("%Y-%m-%d") if d else None
+
+
 def processar_registros(records, nome_arquivo, cnes_permitido=None):
     """
     cnes_permitido: se fornecido (str), apenas registros cujo id_unidade
@@ -152,24 +280,6 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
 
     if not modelo_alvo:
         return {"status": "erro", "mensagem": "Endemia não reconhecida pelo nome do arquivo."}
-
-    def formatar_data(valor_data):
-        if not valor_data:
-            return None
-        try:
-            if hasattr(valor_data, "strftime"):
-                return valor_data.strftime("%Y-%m-%d")
-            data_limpa = str(valor_data).strip().split(" ")[0]
-            if data_limpa in ("30/12/1899", "NaT", "nan", ""):
-                return None
-            for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
-                try:
-                    return datetime.strptime(data_limpa, fmt).strftime("%Y-%m-%d")
-                except ValueError:
-                    continue
-            return None
-        except (ValueError, TypeError, AttributeError):
-            return None
 
     def _montar_endereco(record):
         partes = [
@@ -199,7 +309,6 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
              2b) tenta match por NM_UBS (normalizado)
           3) ID_UNIDADE cru (assume que já é uma UBS)
         """
-
         bairro = extrair_bairro(_montar_endereco(record))
         if bairro:
             nome_ubs = BAIRRO_PARA_UBS_NOME.get(bairro)
@@ -237,12 +346,23 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
             continue
 
         if modelo_alvo == PacienteDengue:
+            # Fallbacks de ano: NU_ANO (campo direto) e SEM_NOT / SEM_PRI (YYYYWW)
+            ano_notif = _parse_ano(record.get('NU_ANO')) or _parse_ano(record.get('SEM_NOT'))
+            ano_sint  = _parse_ano(record.get('SEM_PRI'))
+
+            d_not, p_not = parse_data_com_precisao(record.get('DT_NOTIFIC'), ano_notif)
+            d_sin, p_sin = parse_data_com_precisao(record.get('DT_SIN_PRI'), ano_sint)
+            d_nas, p_nas = parse_data_com_precisao(record.get('DT_NASC'), None)
+
             nova_linha = PacienteDengue(
                 numero_notificacao=record.get('NU_NOTIFIC'),
                 nome_paciente=record.get('NM_PACIENT'),
-                data_notificacao=formatar_data(record.get('DT_NOTIFIC')),
-                data_pri_sintoma=formatar_data(record.get('DT_SIN_PRI')),
-                data_nascimento=formatar_data(record.get('DT_NASC')),
+                data_notificacao=d_not,
+                data_notificacao_precisao=p_not,
+                data_pri_sintoma=d_sin,
+                data_pri_sintoma_precisao=p_sin,
+                data_nascimento=d_nas,
+                data_nascimento_precisao=p_nas,
                 endereco=_montar_endereco(record),
                 id_agravo=record.get('ID_AGRAVO'),
                 id_unidade=id_unidade,
@@ -258,13 +378,16 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
                 ano_notific=record.get('ANO_NOTIFIC'),
             )
         elif modelo_alvo == PacienteSifilis:
+            ano_notif = _parse_ano(record.get('NU_ANO')) or _parse_ano(record.get('ANO_NOTIFIC'))
+            d_not, p_not = parse_data_com_precisao(record.get('DT_NOTIFIC'), ano_notif)
             nova_linha = PacienteSifilis(
                 id_unidade=id_unidade,
                 un_saude=record.get('UN_SADE'),
                 nm_ubs=record.get('NM_UBS'),
                 mu_residen=record.get('MU_RESIDEN'),
                 nu_notific=record.get('NU_NOTIFIC'),
-                dt_notific=formatar_data(record.get('DT_NOTIFIC')),
+                data_notificacao=d_not,
+                data_notificacao_precisao=p_not,
                 id_agravo=record.get('ID_AGRAVO'),
                 nm_pacient=record.get('NM_PACIENT'),
                 ano_notific=record.get('ANO_NOTIFIC'),
