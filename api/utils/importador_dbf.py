@@ -87,7 +87,6 @@ UBS_NOME_PARA_CNES = {
 }
 
 UNIDADE_NOTIFICADORA_PARA_UBS = {
-    # Códigos de Hospitais/CAPS/Siglas
     "2320498": "2778432",
     "7654321": "2778254",
     "8765432": "2364689",
@@ -111,8 +110,6 @@ UNIDADE_NOTIFICADORA_PARA_UBS = {
     "UPA ADELMAR PEREIRA": "2778335",
     "UPA DR. ADELMAR PEREIRA": "2778335",
     "UPA DR ADELMAR PEREIRA": "2778335",
-
-    # Nomes das UBS diretos (para caso o DBF envie texto no ID_UNIDADE)
     "UBS CAMILO FILHO": "2777916",
     "UBS FLORIANO": "2778432",
     "UBS DIRCEU ARCOVERDE": "2778041",
@@ -159,29 +156,25 @@ def normalizar_texto(texto):
 
 
 def extrair_bairro(endereco_string):
-    """Tenta extrair e normalizar o nome do bairro do endereço concatenado"""
     if not endereco_string:
         return None
+    # ✅ CORREÇÃO: Força a conversão para string antes de usar o .split()
+    end_str = str(endereco_string).strip()
+    if not end_str:
+        return None
 
-    partes = [p.strip() for p in endereco_string.split(",") if p.strip()]
+    partes = [p.strip() for p in end_str.split(",") if p.strip()]
     if not partes:
         return None
 
     ultima = partes[-1]
-
     eh_cep = (ultima.isdigit() or
               (ultima.replace("-", "").replace(".", "").isdigit()
                and len(ultima) <= 10))
-
     bairro_bruto = partes[-2] if (eh_cep and len(partes) >= 2) else partes[-1]
     return normalizar_texto(bairro_bruto)
 
 
-# ============================================================
-# PARSERS DE DATA (com precisão parcial + sentinelas)
-# ============================================================
-
-# Sentinelas clássicas de "data nula" que aparecem em DBF/Excel/SINAN
 DATA_SENTINELA_INVALIDA = {
     "30/12/1899", "31/12/1899",
     "1899-12-30", "1899-12-31",
@@ -191,20 +184,13 @@ DATA_SENTINELA_INVALIDA = {
 
 
 def _parse_data_full(valor):
-    """
-    Converte um valor qualquer (datetime, date, str, DBF YYYYMMDD) em datetime.date.
-    Retorna None para sentinelas e valores inválidos/parciais.
-    """
     if valor is None:
         return None
-
-    # datetime/date nativo (dbfread retorna date; pandas retorna Timestamp/NaT)
     if hasattr(valor, "year") and hasattr(valor, "month") and hasattr(valor, "day"):
         try:
             d = date(int(valor.year), int(valor.month), int(valor.day))
         except (ValueError, AttributeError, TypeError):
             return None
-        # Sentinela clássica: 1899-12-30 / 1899-12-31
         if d.year == 0:
             return None
         if d.year == 1899 and d.month == 12 and d.day in (30, 31):
@@ -214,11 +200,10 @@ def _parse_data_full(valor):
     s = str(valor).strip()
     if not s or s.lower() in ("nat", "nan", "null", "none"):
         return None
-    s = s.split(" ")[0]  # remove hora ("2025-06-05 00:00:00" → "2025-06-05")
+    s = s.split(" ")[0]
     if s in DATA_SENTINELA_INVALIDA:
         return None
 
-    # DBF bruto: YYYYMMDD (8 dígitos)
     if len(s) == 8 and s.isdigit():
         try:
             d = date(int(s[0:4]), int(s[4:6]), int(s[6:8]))
@@ -228,21 +213,18 @@ def _parse_data_full(valor):
             return None
         return d
 
-    # ISO YYYY-MM-DD
     if len(s) == 10 and s[4] == "-" and s[7] == "-":
         try:
             return datetime.strptime(s, "%Y-%m-%d").date()
         except ValueError:
             return None
 
-    # BR DD/MM/YYYY
     if len(s) == 10 and s[2] == "/" and s[5] == "/":
         try:
             return datetime.strptime(s, "%d/%m/%Y").date()
         except ValueError:
             pass
 
-    # Fallback: US/outros
     for fmt in ("%m/%d/%Y", "%d-%m-%Y", "%Y/%m/%d"):
         try:
             return datetime.strptime(s, fmt).date()
@@ -253,14 +235,8 @@ def _parse_data_full(valor):
 
 
 def _parse_ano(valor):
-    """
-    Extrai apenas o ano de um valor qualquer.
-    Aceita: int/float (2025, 2025.0), str "2025", "YYYYWW" (202523 → 2025).
-    Retorna None se não der pra confiar.
-    """
     if valor is None:
         return None
-
     if hasattr(valor, "year"):
         try:
             ano = int(valor.year)
@@ -281,10 +257,6 @@ def _parse_ano(valor):
 
 
 def parse_data_com_precisao(valor, fallback_ano=None):
-    """
-    Retorna (data_iso_str_ou_None, precisao).
-    precisao: 'D'=dia, 'M'=mês, 'Y'=ano, 'N'=não informado.
-    """
     d = _parse_data_full(valor)
     if d is not None:
         return d.strftime("%Y-%m-%d"), "D"
@@ -301,17 +273,19 @@ def parse_data_com_precisao(valor, fallback_ano=None):
 
 
 def formatar_data(valor_data):
-    """Compat: retorna só a string ISO. Usado em campos sem precisão (sifilis etc.)."""
     d = _parse_data_full(valor_data)
     return d.strftime("%Y-%m-%d") if d else None
 
 
+def _get(record, *keys):
+    """Busca o valor em múltiplas chaves possíveis (SINAN, Django, DBF truncado)."""
+    for k in keys:
+        if k in record and record[k] is not None and str(record[k]).strip() != "":
+            return record[k]
+    return None
+
+
 def processar_registros(records, nome_arquivo, cnes_permitido=None):
-    """
-    cnes_permitido: se fornecido (str), apenas registros cujo id_unidade
-                    resolvido seja igual a esse CNES serão inseridos.
-                    Útil para restringir uploads de UBS.
-    """
     nome_arquivo = nome_arquivo.lower()
     modelo_alvo = None
 
@@ -324,15 +298,19 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
         return {"status": "erro", "mensagem": "Endemia não reconhecida pelo nome do arquivo."}
 
     def _montar_endereco(record):
+        end_direto = _get(record, 'ENDERECO')
+        if end_direto:
+            # ✅ CORREÇÃO: Força conversão para string
+            return str(end_direto).strip()
+
         partes = [
-            record.get('NM_LOGRADO'), record.get('NM_NUMERO'),
-            record.get('NM_COMPLEM'), record.get('NM_BAIRRO'),
-            record.get('NU_CEP'),
+            _get(record, 'NM_LOGRADO'), _get(record, 'NM_NUMERO'),
+            _get(record, 'NM_COMPLEM'), _get(record, 'NM_BAIRRO'),
+            _get(record, 'NU_CEP'),
         ]
         return ", ".join(str(p).strip() for p in partes if p and str(p).strip())
 
     def _limpar_cnes(valor):
-        """Converte qualquer coisa em string limpa de CNES (sem .0, sem nan)."""
         if valor is None:
             return None
         s = str(valor).strip()
@@ -343,15 +321,7 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
         return s
 
     def resolver_id_unidade(record):
-        """
-        Prioridade:
-          1) Bairro de RESIDÊNCIA → UBS do território  (mais correto)
-          2) ID_UNIDADE — se for hospital/CAPS/nome conhecido, redireciona p/ UBS
-             2a) tenta match por CNES ou nome normalizado
-          3) NM_UBS — tenta match por nome normalizado
-          4) ID_UNIDADE cru (assume que já é uma UBS)
-        """
-        # 1. Tenta pelo Bairro
+        # 1. Bairro de RESIDÊNCIA
         bairro = extrair_bairro(_montar_endereco(record))
         if bairro:
             nome_ubs = BAIRRO_PARA_UBS_NOME.get(bairro)
@@ -361,31 +331,25 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
                     return cnes
             print(f"[AVISO] Bairro não mapeado: {bairro!r}")
 
-        # 2. Tenta pelo ID_UNIDADE
-        valor = record.get('ID_UNIDADE')
-        if valor is None:
-            valor = record.get('ID_UNID')
-
+        # 2. ID_UNIDADE (hospital, CAPS, etc.)
+        valor = _get(record, 'ID_UNIDADE', 'ID_UNID')
         id_original = _limpar_cnes(valor)
 
         if id_original:
-            # Match exato
             if id_original in UNIDADE_NOTIFICADORA_PARA_UBS:
                 return UNIDADE_NOTIFICADORA_PARA_UBS[id_original]
-
-            # Match normalizado (tira acento, põe em maiúsculo)
             id_normalizado = normalizar_texto(id_original)
             if id_normalizado in UNIDADE_NOTIFICADORA_PARA_UBS:
                 return UNIDADE_NOTIFICADORA_PARA_UBS[id_normalizado]
 
-        # 3. Tenta pelo NM_UBS
-        nm_ubs_raw = record.get('NM_UBS')
+        # 3. NM_UBS
+        nm_ubs_raw = _get(record, 'NM_UBS', 'NOME_UBS')
         if nm_ubs_raw:
             chave_nome = normalizar_texto(nm_ubs_raw)
             if chave_nome in UNIDADE_NOTIFICADORA_PARA_UBS:
                 return UNIDADE_NOTIFICADORA_PARA_UBS[chave_nome]
 
-        # 4. Retorna o ID original se não achar nada
+        # 4. Fallback
         return id_original
 
     registros_para_salvar = []
@@ -399,17 +363,26 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
             continue
 
         if modelo_alvo == PacienteDengue:
-            # Fallbacks de ano: NU_ANO (campo direto) e SEM_NOT / SEM_PRI (YYYYWW)
-            ano_notif = _parse_ano(record.get('NU_ANO')) or _parse_ano(record.get('SEM_NOT'))
-            ano_sint = _parse_ano(record.get('SEM_PRI'))
+            ano_notif = _parse_ano(_get(record, 'NU_ANO', 'SEM_NOT', 'ANO_NOTIFIC', 'ANO_NOTIF'))
+            ano_sint = _parse_ano(_get(record, 'SEM_PRI'))
 
-            d_not, p_not = parse_data_com_precisao(record.get('DT_NOTIFIC'), ano_notif)
-            d_sin, p_sin = parse_data_com_precisao(record.get('DT_SIN_PRI'), ano_sint)
-            d_nas, p_nas = parse_data_com_precisao(record.get('DT_NASC'), None)
+            d_not, p_not = parse_data_com_precisao(_get(record, 'DT_NOTIFIC', 'DATA_NOTIFICACAO', 'DATA_NOTIF'),
+                                                   ano_notif)
+            p_not_imp = _get(record, 'DATA_NOTIFICACAO_PRECISAO', 'DATA_NOTIFICA_PRECISAO')
+            if p_not_imp: p_not = p_not_imp
+
+            d_sin, p_sin = parse_data_com_precisao(_get(record, 'DT_SIN_PRI', 'DATA_PRI_SINTOMA', 'DATA_PRI_S'),
+                                                   ano_sint)
+            p_sin_imp = _get(record, 'DATA_PRI_SINTOMA_PRECISAO', 'DATA_PRI_SINTO_PRECISAO')
+            if p_sin_imp: p_sin = p_sin_imp
+
+            d_nas, p_nas = parse_data_com_precisao(_get(record, 'DT_NASC', 'DATA_NASCIMENTO', 'DATA_NASCI'), None)
+            p_nas_imp = _get(record, 'DATA_NASCIMENTO_PRECISAO', 'DATA_NASCI_PRECISAO')
+            if p_nas_imp: p_nas = p_nas_imp
 
             nova_linha = PacienteDengue(
-                numero_notificacao=record.get('NU_NOTIFIC'),
-                nome_paciente=record.get('NM_PACIENT'),
+                numero_notificacao=_get(record, 'NU_NOTIFIC', 'NUMERO_NOTIFICACAO', 'NUMERO_NOT'),
+                nome_paciente=_get(record, 'NM_PACIENT', 'NOME_PACIENTE', 'NOME_PACIE'),
                 data_notificacao=d_not,
                 data_notificacao_precisao=p_not,
                 data_pri_sintoma=d_sin,
@@ -417,87 +390,105 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
                 data_nascimento=d_nas,
                 data_nascimento_precisao=p_nas,
                 endereco=_montar_endereco(record),
-                id_agravo=record.get('ID_AGRAVO'),
+                id_agravo=_get(record, 'ID_AGRAVO'),
                 id_unidade=id_unidade,
-                hospital=record.get('HOSPITAL'),
-                cs_sexo=record.get('CS_SEXO'),
-                classi_fin=record.get('CLASSI_FIN'),
+                hospital=_get(record, 'HOSPITAL'),
+                cs_sexo=_get(record, 'CS_SEXO'),
+                classi_fin=_get(record, 'CLASSI_FIN'),
             )
         elif modelo_alvo == PacienteTuberculose:
             nova_linha = PacienteTuberculose(
                 id_unidade=id_unidade,
-                nm_ubs=record.get('NM_UBS') or record.get('ID_UNIDADE'),
-                nu_notific=record.get('NU_NOTIFIC') or record.get('NU_NOTIFICA'),
-                ano_notific=record.get('ANO_NOTIFIC'),
+                nm_ubs=_get(record, 'NM_UBS', 'NOME_UBS'),
+                nu_notific=_get(record, 'NU_NOTIFIC', 'NU_NOTIFICA', 'NUMERO_NOTIFICACAO', 'NUMERO_NOT'),
+                ano_notific=_get(record, 'ANO_NOTIFIC', 'NU_ANO', 'ANO_NOTIF'),
             )
         elif modelo_alvo == PacienteSifilis:
-            ano_notif = _parse_ano(record.get('NU_ANO')) or _parse_ano(record.get('ANO_NOTIFIC'))
-            d_not, p_not = parse_data_com_precisao(record.get('DT_NOTIFIC'), ano_notif)
+            ano_notif = _parse_ano(_get(record, 'NU_ANO', 'ANO_NOTIFIC', 'ANO_NOTIF'))
+            d_not, p_not = parse_data_com_precisao(_get(record, 'DT_NOTIFIC', 'DATA_NOTIFICACAO', 'DATA_NOTIF'),
+                                                   ano_notif)
+            p_not_imp = _get(record, 'DATA_NOTIFICACAO_PRECISAO', 'DATA_NOTIFICA_PRECISAO')
+            if p_not_imp: p_not = p_not_imp
+
             nova_linha = PacienteSifilis(
                 id_unidade=id_unidade,
-                un_saude=record.get('UN_SADE'),
-                nm_ubs=record.get('NM_UBS'),
-                mu_residen=record.get('MU_RESIDEN'),
-                nu_notific=record.get('NU_NOTIFIC'),
+                un_saude=_get(record, 'UN_SADE', 'UN_SAUDE'),
+                nm_ubs=_get(record, 'NM_UBS', 'NOME_UBS'),
+                mu_residen=_get(record, 'MU_RESIDEN', 'MUNICIPIO_RESIDENCIA'),
+                nu_notific=_get(record, 'NU_NOTIFIC', 'NUMERO_NOTIFICACAO', 'NUMERO_NOT'),
                 data_notificacao=d_not,
                 data_notificacao_precisao=p_not,
-                id_agravo=record.get('ID_AGRAVO'),
-                nm_pacient=record.get('NM_PACIENT'),
-                ano_notific=record.get('ANO_NOTIFIC'),
+                id_agravo=_get(record, 'ID_AGRAVO'),
+                nm_pacient=_get(record, 'NM_PACIENT', 'NOME_PACIENTE', 'NOME_PACIE'),
+                ano_notific=_get(record, 'ANO_NOTIFIC', 'NU_ANO', 'ANO_NOTIF'),
             )
         elif modelo_alvo == PacienteChagas:
             nova_linha = PacienteChagas(
                 id_unidade=id_unidade,
-                nm_ubs=record.get('NM_UBS'),
-                nu_notific=record.get('NU_NOTIFIC') or record.get('NU_NOTIFICA'),
-                ano_notific=record.get('ANO_NOTIFIC'),
+                nm_ubs=_get(record, 'NM_UBS', 'NOME_UBS'),
+                nu_notific=_get(record, 'NU_NOTIFIC', 'NU_NOTIFICA', 'NUMERO_NOTIFICACAO', 'NUMERO_NOT'),
+                ano_notific=_get(record, 'ANO_NOTIFIC', 'NU_ANO', 'ANO_NOTIF'),
             )
         elif modelo_alvo == PacienteViolenciaDomestica:
             nova_linha = PacienteViolenciaDomestica(
                 id_unidade=id_unidade,
-                nm_ubs=record.get('NM_UBS'),
-                nu_notific=record.get('NU_NOTIFIC'),
-                ano_notific=record.get('ANO_NOTIFIC'),
+                nm_ubs=_get(record, 'NM_UBS', 'NOME_UBS'),
+                nu_notific=_get(record, 'NU_NOTIFIC', 'NUMERO_NOTIFICACAO', 'NUMERO_NOT'),
+                ano_notific=_get(record, 'ANO_NOTIFIC', 'NU_ANO', 'ANO_NOTIF'),
             )
         elif modelo_alvo == PacienteHans:
             nova_linha = PacienteHans(
                 id_unidade=id_unidade,
-                nm_ubs=record.get('NM_UBS'),
-                nu_notific=record.get('NU_NOTIFIC') or record.get('NU_NOTIFICA'),
-                ano_notific=record.get('ANO_NOTIFIC'),
+                nm_ubs=_get(record, 'NM_UBS', 'NOME_UBS'),
+                nu_notific=_get(record, 'NU_NOTIFIC', 'NU_NOTIFICA', 'NUMERO_NOTIFICACAO', 'NUMERO_NOT'),
+                ano_notific=_get(record, 'ANO_NOTIFIC', 'NU_ANO', 'ANO_NOTIF'),
             )
         elif modelo_alvo == PacienteHepatite:
             nova_linha = PacienteHepatite(
                 id_unidade=id_unidade,
-                nm_ubs=record.get('NM_UBS'),
-                nu_notific=record.get('NU_NOTIFIC') or record.get('NU_NOTIFICA'),
-                ano_notific=record.get('ANO_NOTIFIC'),
+                nm_ubs=_get(record, 'NM_UBS', 'NOME_UBS'),
+                hospital=_get(record, 'HOSPITAL'),
+                ano_notific=_get(record, 'ANO_NOTIFIC', 'NU_ANO', 'ANO_NOTIF'),
+                nu_notific=_get(record, 'NU_NOTIFIC', 'NU_NOTIFICA', 'NUMERO_NOTIFICACAO', 'NUMERO_NOT'),
             )
         elif modelo_alvo == PacienteAnimaisPec:
             nova_linha = PacienteAnimaisPec(
                 id_unidade=id_unidade,
-                nm_ubs=record.get('NM_UBS'),
-                hospital=record.get('HOSPITAL'),
-                ano_notific=record.get('ANO_NOTIFIC'),
-                nu_notific=record.get('NU_NOTIFIC') or record.get('NU_NOTIFICA'),
+                nm_ubs=_get(record, 'NM_UBS', 'NOME_UBS'),
+                hospital=_get(record, 'HOSPITAL'),
+                ano_notific=_get(record, 'ANO_NOTIFIC', 'NU_ANO', 'ANO_NOTIF'),
+                nu_notific=_get(record, 'NU_NOTIFIC', 'NU_NOTIFICA', 'NUMERO_NOTIFICACAO', 'NUMERO_NOT'),
             )
         elif modelo_alvo == PacienteIntoxicacao:
             nova_linha = PacienteIntoxicacao(
                 id_unidade=id_unidade,
-                ano_notific=record.get('ANO_NOTIFIC'),
-                nu_notific=record.get('NU_NOTIFIC'),
+                nm_ubs=_get(record, 'NM_UBS', 'NOME_UBS'),
+                hospital=_get(record, 'HOSPITAL'),
+                ano_notific=_get(record, 'ANO_NOTIFIC', 'NU_ANO', 'ANO_NOTIF'),
+                nu_notific=_get(record, 'NU_NOTIFIC', 'NUMERO_NOTIFICACAO', 'NUMERO_NOT'),
             )
         elif modelo_alvo == PacienteLeish:
             nova_linha = PacienteLeish(
                 id_unidade=id_unidade,
-                ano_notific=record.get('ANO_NOTIFIC'),
-                nu_notific=record.get('NU_NOTIFIC'),
+                nm_ubs=_get(record, 'NM_UBS', 'NOME_UBS'),
+                hospital=_get(record, 'HOSPITAL'),
+                ano_notific=_get(record, 'ANO_NOTIFIC', 'NU_ANO', 'ANO_NOTIF'),
+                nu_notific=_get(record, 'NU_NOTIFIC', 'NUMERO_NOTIFICACAO', 'NUMERO_NOT'),
             )
         elif modelo_alvo == PacienteAidsAdulto:
             nova_linha = PacienteAidsAdulto(
                 id_unidade=id_unidade,
-                ano_notific=record.get('ANO_NOTIFIC'),
-                nu_notific=record.get('NU_NOTIFIC'),
+                nm_ubs=_get(record, 'NM_UBS', 'NOME_UBS'),
+                hospital=_get(record, 'HOSPITAL'),
+                ano_notific=_get(record, 'ANO_NOTIFIC', 'NU_ANO', 'ANO_NOTIF'),
+                nu_notific=_get(record, 'NU_NOTIFIC', 'NUMERO_NOTIFICACAO', 'NUMERO_NOT'),
+            )
+        elif modelo_alvo == CoberturaVacinal:
+            nova_linha = CoberturaVacinal(
+                ano=_parse_ano(_get(record, 'ANO', 'NU_ANO')) or 0,
+                imunobiologico=_get(record, 'IMUNOBIOLOGICO', 'VACINA') or '',
+                cobertura_percentual=float(_get(record, 'COBERTURA_PERCENTUAL', 'COBERTURA') or 0.0),
+                meta_otima=float(_get(record, 'META_OTIMA', 'META') or 95.0),
             )
         else:
             continue

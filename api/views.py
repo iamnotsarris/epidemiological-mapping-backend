@@ -516,7 +516,6 @@ def upload_arquivo(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # ✅ NOVO: define o CNES permitido com base no perfil
         perfil = getattr(request.user, 'perfil', None)
         is_admin = request.user.is_superuser or (perfil and perfil.role == 'ADMIN')
 
@@ -534,20 +533,42 @@ def upload_arquivo(request):
               f"cnes_permitido={cnes_permitido} "
               f"file={nome_arquivo} size={arquivo.size}")
 
-        # ✅ NOVO: CSVs de cobertura vacinal são dados globais — só admin
+        # ================= CSV =================
         if nome_arquivo.endswith('.csv'):
             if not is_admin:
                 return Response(
-                    {'erro': 'Apenas administradores podem importar CSVs de cobertura vacinal.'},
+                    {'erro': 'Apenas administradores podem importar arquivos CSV.'},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            # ... (código de CSV continua igual)
-            df = pd.read_csv(arquivo, sep=';', encoding='utf-8', low_memory=False)
-            df.columns = df.columns.str.lower()
-            # ... resto do processamento
-            return Response({"status": "sucesso",
-                             "mensagem": "Arquivo CSV processado com sucesso!"})
+            try:
+                df = pd.read_csv(arquivo, sep=';', encoding='utf-8', low_memory=False)
+                df.columns = [str(c).strip().upper() for c in df.columns]
+                df = df.where(pd.notnull(df), None)
 
+                resultado = processar_registros(
+                    df.to_dict(orient='records'),
+                    nome_arquivo,
+                    cnes_permitido=cnes_permitido,
+                )
+                if resultado.get("status") == "erro":
+                    return Response({"erro": resultado.get("mensagem")},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
+                inseridos = resultado.get('registros_inseridos', 0)
+                ignorados = resultado.get('registros_ignorados', 0)
+
+                msg = f"Arquivo CSV processado! {inseridos} registros inseridos."
+                if ignorados:
+                    msg += (f" {ignorados} registros foram ignorados "
+                            f"por não pertencerem à sua UBS.")
+                return Response({"status": "sucesso", "mensagem": msg})
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return Response({"erro": f"Erro ao processar CSV: {str(e)}"},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # ================= DBF =================
         elif nome_arquivo.endswith('.dbf'):
             with tempfile.NamedTemporaryFile(delete=False, suffix='.dbf') as tmp:
                 for chunk in arquivo.chunks():
@@ -555,7 +576,6 @@ def upload_arquivo(request):
                 caminho_tmp = tmp.name
 
             try:
-                # ✅ NOVO: passa cnes_permitido
                 resultado = processar_arquivo_dbf(
                     caminho_tmp,
                     nome_original=nome_arquivo,
@@ -579,13 +599,13 @@ def upload_arquivo(request):
             finally:
                 os.remove(caminho_tmp)
 
+        # ================= EXCEL =================
         elif nome_arquivo.endswith(('.xlsx', '.xls')):
             try:
                 df = pd.read_excel(arquivo)
                 df.columns = [str(c).strip().upper() for c in df.columns]
                 df = df.where(pd.notnull(df), None)
 
-                # ✅ NOVO: passa cnes_permitido
                 resultado = processar_registros(
                     df.to_dict(orient='records'),
                     nome_arquivo,
