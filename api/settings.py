@@ -26,7 +26,7 @@ ALLOWED_HOSTS = [
     "api-data-sigma-lovat.vercel.app",
     "api-data-backend.onrender.com",
     "192.168.137.1",
-    "https://dadosepidemiologicosfloriano.vercel.app/",
+    "https://sigepflo.vercel.app/",
 
 ]
 
