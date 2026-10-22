@@ -117,9 +117,7 @@ MAILERS = {
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
-    "https://dadosepidemiologicosfloriano.vercel.app",
-    "https://dadosepidemiologicosfloriano-git-main.vercel.app",
-    "https://epidemiological-mapping-git-develop-seps.vercel.app",
+    "https://sigepflo.vercel.app/",
 ]
 
 if DEBUG:
