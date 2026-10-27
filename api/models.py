@@ -1,18 +1,38 @@
 from django.db import models
+from django.contrib.auth.models import User
 
-# Classe do Paciente
 class PacienteDengue(models.Model):
     numero_notificacao = models.CharField(max_length=50, null=True, blank=True)
     id_unidade = models.TextField(null=True, blank=True)
     nome_paciente = models.CharField(max_length=100, null=True, blank=True)
     endereco = models.TextField(null=True, blank=True)
-    data_notificacao = models.DateField(null=True, blank=True)
-    data_pri_sintoma = models.DateField(null=True, blank=True)
-    data_nascimento = models.DateField(null=True, blank=True)
     id_agravo = models.TextField(null=True, blank=True)
     hospital = models.TextField(null=True, blank=True)
     cs_sexo = models.TextField(null=True, blank=True)
     classi_fin = models.TextField(null=True, blank=True)
+    data_notificacao = models.DateField(null=True, blank=True)
+    data_notificacao_precisao = models.CharField(
+        max_length=1,
+        choices=[('D', 'Dia'), ('M', 'Mês'), ('Y', 'Ano'), ('N', 'Não informado')],
+        default='D',
+        null=True, blank=True,
+    )
+
+    data_pri_sintoma = models.DateField(null=True, blank=True)
+    data_pri_sintoma_precisao = models.CharField(
+        max_length=1,
+        choices=[('D', 'Dia'), ('M', 'Mês'), ('Y', 'Ano'), ('N', 'Não informado')],
+        default='D',
+        null=True, blank=True,
+    )
+
+    data_nascimento = models.DateField(null=True, blank=True)
+    data_nascimento_precisao = models.CharField(
+        max_length=1,
+        choices=[('D', 'Dia'), ('M', 'Mês'), ('Y', 'Ano'), ('N', 'Não informado')],
+        default='D',
+        null=True, blank=True,
+    )
 
     def __str__(self):
         return f"{self.numero_notificacao} - {self.nome_paciente}"
@@ -21,6 +41,8 @@ class PacienteTuberculose(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
+    ano_notific = models.TextField(null=True, blank=True)
+
 
     def __str__(self):
         return f"{self.nm_ubs} - {self.nu_notific}"
@@ -31,29 +53,42 @@ class PacienteSifilis(models.Model):
     un_saude=models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
     mu_residen=models.TextField(null=True, blank=True)
-    dt_notific=models.DateField(null=True, blank=True)
     id_agravo=models.TextField(null=True, blank=True)
     nm_pacient=models.TextField(null=True, blank=True)
+    ano_notific = models.TextField(null=True, blank=True)
+
+    data_notificacao = models.DateField(null=True, blank=True)
+    data_notificacao_precisao = models.CharField(
+        max_length=1,
+        choices=[('D', 'Dia'), ('M', 'Mês'), ('Y', 'Ano'), ('N', 'Não informado')],
+        default='D',
+        null=True, blank=True,
+    )
 
 class PacienteChagas(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
+    ano_notific = models.TextField(null=True, blank=True)
 
 class PacienteHans(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
+    ano_notific = models.TextField(null=True, blank=True)
 
 class PacienteViolenciaDomestica(models.Model):
     nu_notific = models.TextField(null=True, blank=True)
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
+    ano_notific = models.TextField(null=True, blank=True)
 
 class PacienteHepatite(models.Model):
     nu_notific = models.TextField(null=True, blank=True)
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
+    hospital = models.TextField(null=True, blank=True)
+    ano_notific = models.TextField(null=True, blank=True)
 
 class PacienteAnimaisPec(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
@@ -63,14 +98,23 @@ class PacienteAnimaisPec(models.Model):
     nu_notific = models.TextField(null=True, blank=True)
 
 class PacienteIntoxicacao(models.Model):
+    id_unidade = models.TextField(null=True, blank=True)
+    nm_ubs = models.TextField(null=True, blank=True)
+    hospital = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
 class PacienteLeish(models.Model):
+    id_unidade = models.TextField(null=True, blank=True)
+    nm_ubs = models.TextField(null=True, blank=True)
+    hospital = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
 class PacienteAidsAdulto(models.Model):
+    id_unidade = models.TextField(null=True, blank=True)
+    nm_ubs = models.TextField(null=True, blank=True)
+    hospital = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
@@ -88,5 +132,20 @@ class CoberturaVacinal(models.Model):
     meta_otima = models.FloatField(default=95.0)
     data_atualizacao = models.DateField(auto_now=True)
 
+    class Meta:
+        unique_together = ('ano', 'imunobiologico')
+
     def __str__(self):
         return f"{self.imunobiologico} ({self.ano}) - {self.cobertura_percentual}%"
+
+class PerfilUsuario(models.Model):
+    TIPO_USUARIO = (
+        ('ADMIN', 'Administrador'),
+        ('UBS', 'Unidade Básica de Saúde'),
+    )
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
+    role = models.CharField(max_length=10, choices=TIPO_USUARIO, default='UBS')
+    id_unidade = models.CharField(max_length=50, null=True, blank=True, help_text="Preencha com o ID da Unidade (CNES) se for UBS")
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.role}"
