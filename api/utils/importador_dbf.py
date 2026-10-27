@@ -343,7 +343,7 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
                 return UNIDADE_NOTIFICADORA_PARA_UBS[id_normalizado]
 
         # 3. NM_UBS
-        nm_ubs_raw = _get(record, 'NM_UBS', 'NOME_UBS')
+        nm_ubs_raw = _get(record, 'NM_UBS', 'NOME_UBS', 'HOSPITAL')
         if nm_ubs_raw:
             chave_nome = normalizar_texto(nm_ubs_raw)
             if chave_nome in UNIDADE_NOTIFICADORA_PARA_UBS:

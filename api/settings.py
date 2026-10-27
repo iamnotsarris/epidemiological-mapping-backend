@@ -26,7 +26,7 @@ ALLOWED_HOSTS = [
     "api-data-sigma-lovat.vercel.app",
     "api-data-backend.onrender.com",
     "192.168.137.1",
-    "https://sigepflo.vercel.app/",
+    "https://sigepflo.vercel.app",
 
 ]
 
@@ -117,7 +117,7 @@ MAILERS = {
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
-    "https://sigepflo.vercel.app/",
+    "https://sigepflo.vercel.app",
 ]
 
 if DEBUG:
