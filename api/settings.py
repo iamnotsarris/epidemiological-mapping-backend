@@ -166,9 +166,9 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'API EPI-DATA Floriano',
-    'DESCRIPTION': 'Documentação dos endpoints do sistema de mapeamento epidemiológico',
-    'VERSION': '1.0.0',
+    'TITLE': 'API SIGEP',
+    'DESCRIPTION': 'Documentação dos endpoints do SIGEP',
+    'VERSION': '1.0.1',
     'SERVE_INCLUDE_SCHEMA': False,
 }
 

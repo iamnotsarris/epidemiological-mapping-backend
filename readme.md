@@ -1,6 +1,6 @@
-# 📊 EPI-DATA Backend - API e Processamento de Dados
+# 📊 SIGEP Backend - API e Processamento de Dados
 
-O backend do sistema **EPI-DATA** é uma API REST desenvolvida em **Django (Python)** projetada para gerenciar o mapeamento epidemiológico e a cobertura vacinal do município de Floriano, PI. O sistema processa dados brutos do SINAN (.dbf) e do DataSUS (.csv) utilizando **Pandas**, servindo informações consolidadas e rápidas para o frontend em React.
+O backend do sistema **SIGEP** é uma API REST desenvolvida em **Django (Python)** projetada para gerenciar o mapeamento epidemiológico e a cobertura vacinal do município de Floriano, PI. O sistema processa dados brutos do SINAN (.dbf) e do DataSUS (.csv) utilizando **Pandas**, servindo informações consolidadas e rápidas para o frontend em React.
 
 ## 🚀 Tecnologias Utilizadas
 
@@ -15,7 +15,7 @@ O backend do sistema **EPI-DATA** é uma API REST desenvolvida em **Django (Pyth
 
 ## 💉 Integração DataSUS: Cobertura Vacinal
 
-Devido à conhecida instabilidade e aos constantes *timeouts* da API pública do OpenDataSUS (CKAN), além do tamanho massivo dos microdados nacionais (arquivos ZIP que ultrapassam 1 GB), a arquitetura do EPI-DATA **não realiza chamadas HTTP diretas em tempo real** aos servidores do governo.
+Devido à conhecida instabilidade e aos constantes *timeouts* da API pública do OpenDataSUS (CKAN), além do tamanho massivo dos microdados nacionais (arquivos ZIP que ultrapassam 1 GB), a arquitetura do SIGEP **não realiza chamadas HTTP diretas em tempo real** aos servidores do governo.
 
 Para garantir performance em infraestruturas gratuitas/limitadas (Render/Neon) e evitar falhas por memória (Out of Memory), o sistema utiliza uma abordagem de **Ingestão via Painel Administrativo**.
 
@@ -49,7 +49,7 @@ O TabNet é o sistema legado do DataSUS, ideal para extrair tabelas já mastigad
    * **Seleções Disponíveis:** Expanda a aba **Município** e selecione EXCLUSIVAMENTE **"220390 Floriano"**.
 6. Clique em **"Mostra"** no final da página.
 7. Na página de resultados, clique em **Cópia como .CSV** ou **Download CSV**.
-8. Faça o upload deste arquivo no Django Admin do EPI-DATA.
+8. Faça o upload deste arquivo no Django Admin do SIGEP.
 
 ### Opção B: "Força Bruta" Local (Para anos recentes/Microdados de +1GB)
 
