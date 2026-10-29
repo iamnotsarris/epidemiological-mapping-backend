@@ -369,7 +369,7 @@ def debug_me(request):
 # ============================================================
 genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
 
-SYSTEM_PROMPT = """Você é o assistente virtual do EPI-DATA, plataforma de vigilância
+SYSTEM_PROMPT = """Você é o assistente virtual do SIGEP, plataforma de vigilância
 epidemiológica da Secretaria de Saúde de Floriano-PI.
 
 REGRAS:
