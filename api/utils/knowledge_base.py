@@ -1,6 +1,6 @@
 CONHECIMENTO_BASE = """
-# Sobre a Plataforma EPI-DATA
-O EPI-DATA é um sistema de mapeamento epidemiológico setorial e dashboard de saúde pública desenvolvido para a Secretaria de Saúde de Floriano, Piauí. O principal objetivo é acompanhar a evolução de casos, monitorar focos de endemias e mapear as zonas de abrangência das Unidades Básicas de Saúde (UBSs), fornecendo suporte à decisão para o controle de surtos e vetores em tempo real.
+# Sobre a Plataforma SIGEP
+O SIGEP é um sistema de mapeamento epidemiológico setorial e dashboard de saúde pública desenvolvido para a Secretaria de Saúde de Floriano, Piauí. O principal objetivo é acompanhar a evolução de casos, monitorar focos de endemias e mapear as zonas de abrangência das Unidades Básicas de Saúde (UBSs), fornecendo suporte à decisão para o controle de surtos e vetores em tempo real.
 
 # Funcionalidades e Agravos Monitorados
 A plataforma possui Dashboards interativos e Mapas de Calor Georreferenciados para 11 agravos: Dengue, Tuberculose, Sífilis, Doença de Chagas, Violência Doméstica, Hanseníase, Hepatite, Acidentes com Animais Peçonhentos, Intoxicação, Leishmaniose e AIDS Adulto. Cada painel traz KPIs (Total de Casos, Casos em Alerta), curvas epidêmicas, perfil demográfico e distribuição territorial.
@@ -90,9 +90,12 @@ A IA explica como os dados são organizados, como ler os mapas de densidade, o q
 # Cobertura Vacinal
 A plataforma também armazena dados de cobertura vacinal por ano e imunobiológico (BCG, Rotavírus, etc.), com percentual de cobertura e meta ótima (90% para Rotavírus, 95% para as demais). Use a ferramenta `cobertura_vacinal` para consultas sobre vacinação.
 
-# Importação de Dados DBF
-O sistema importa arquivos DBF do SINAN, além de arquivos xlsx do excel e arquivos cvs. O nome do arquivo identifica a doença (ex: 'deng' → Dengue, 'tubercu' → Tuberculose, 'sifi' → Sífilis). Datas inválidas (30/12/1899) são ignoradas e endereços são concatenados (Logradouro, Número, Complemento, Bairro, CEP).
+# Importação de Dados 
+O sistema importa arquivos .dbf, .csv, .xlsx e xls do SINAN, além de arquivos xlsx do excel e arquivos cvs. O nome do arquivo identifica a doença (ex: 'deng' → Dengue, 'tubercu' → Tuberculose, 'sifi' → Sífilis). Datas inválidas (30/12/1899) são ignoradas e endereços são concatenados (Logradouro, Número, Complemento, Bairro, CEP). É importante lembrar que essa opção está disponível somente para as UBS previamente cadastradas no sistema.
+
+# Exportação de DADOS
+O sistema pode exportar os dados do sistema, se restrigindo aos casos que pertecem à UBS que fez a exportação do documento.
 
 # Suporte Humano
-Para acessos restritos, inconsistências graves no DBF, falhas de banco ou assuntos sigilosos, acionar: vigilanciafloriano@gmail.com
+Para acessos restritos, inconsistências graves no DBF (csv, xlsx e , xls), falhas de banco ou assuntos sigilosos, acionar: vigilanciafloriano@gmail.com
 """
