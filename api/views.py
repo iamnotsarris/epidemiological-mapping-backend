@@ -700,6 +700,7 @@ def sincronizar_api_governo(request):
 def download_relatorio_mensal(request):
     mes = request.query_params.get('mes')
     ano = request.query_params.get('ano')
+    agravo = request.query_params.get('agravo', 'geral')  # ✅ Alterado para 'agravo'
 
     if not mes or not ano:
         return Response({"erro": "Informe 'mes' e 'ano' na URL (ex: ?mes=10&ano=2026)."}, status=400)
@@ -711,11 +712,11 @@ def download_relatorio_mensal(request):
         return Response({"erro": "Mês e ano devem ser números inteiros."}, status=400)
 
     try:
-        # ✅ Pega os bytes em memória direto
-        pdf_bytes = gerar_relatorio_mensal(mes, ano)
+        # ✅ Passa o agravo para o gerador
+        pdf_bytes = gerar_relatorio_mensal(mes, ano, agravo)
 
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="relatorio_{mes:02d}_{ano}.pdf"'
+        response['Content-Disposition'] = f'attachment; filename="relatorio_{agravo}_{mes:02d}_{ano}.pdf"'
         return response
 
     except Exception as e:

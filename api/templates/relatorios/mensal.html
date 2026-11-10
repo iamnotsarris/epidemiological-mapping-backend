@@ -14,9 +14,9 @@
         .header h1 { color: #1e3a8a; margin: 0; font-size: 24px; }
         .header p { margin: 5px 0 0 0; color: #666; font-size: 14px; }
 
-        .kpi-box { background-color: #f3f4f6; border-left: 5px solid #1e3a8a; padding: 15px; width: 30%; }
+        .kpi-box { background-color: #f3f4f6; border-left: 5px solid #1e3a8a; padding: 15px; text-align: center; }
         .kpi-box h3 { margin: 0 0 5px 0; font-size: 14px; color: #666; text-transform: uppercase; }
-        .kpi-box .value { font-size: 28px; font-weight: bold; color: #1e3a8a; }
+        .kpi-box .value { font-size: 32px; font-weight: bold; color: #1e3a8a; }
 
         h2 { color: #1e3a8a; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 30px; }
 
@@ -32,74 +32,141 @@
         <p>SIGEP - Secretaria de Saúde de Floriano-PI | Referência: {{ mes_nome }}/{{ ano }}</p>
     </div>
 
-    <!-- KPIs -->
-    <table style="width: 100%; margin-bottom: 20px; border: none;">
-        <tr>
-            <td class="kpi-box">
-                <h3>Total Dengue</h3>
-                <div class="value">{{ kpis.dengue }}</div>
-            </td>
-            <td class="kpi-box">
-                <h3>Total Sífilis</h3>
-                <div class="value">{{ kpis.sifilis }}</div>
-            </td>
-            <td class="kpi-box">
-                <h3>Total Tuberculose</h3>
-                <div class="value">{{ kpis.tuberculose }}</div>
-            </td>
-        </tr>
-    </table>
+    {% if agravo == 'geral' %}
+        <!-- ========================================== -->
+        <!-- LAYOUT: PANORAMA GERAL                     -->
+        <!-- ========================================== -->
 
-    <!-- Tabela de Cobertura Vacinal -->
-    <h2>📊 Cobertura Vacinal ({{ ano }})</h2>
-    <table>
-        <thead>
+        <!-- KPIs Gerais -->
+        <table style="width: 100%; margin-bottom: 20px; border: none;">
             <tr>
-                <th>Imunobiológico</th>
-                <th>Cobertura (%)</th>
-                <th>Meta (%)</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for vacina in vacinas %}
-            <tr>
-                <td>{{ vacina.imunobiologico }}</td>
-                <td>{{ vacina.cobertura_percentual }}%</td>
-                <td>{{ vacina.meta_otima }}%</td>
-                <td>
-                    {% if vacina.cobertura_percentual >= vacina.meta_otima %}
-                        <span style="color: green; font-weight: bold;">✔ Atingida</span>
-                    {% else %}
-                        <span style="color: red; font-weight: bold;">✘ Abaixo da Meta</span>
-                    {% endif %}
+                <td class="kpi-box" style="width: 33%;">
+                    <h3>Total Dengue</h3><div class="value">{{ kpis.dengue }}</div>
+                </td>
+                <td class="kpi-box" style="width: 33%;">
+                    <h3>Total Sífilis</h3><div class="value">{{ kpis.sifilis }}</div>
+                </td>
+                <td class="kpi-box" style="width: 33%;">
+                    <h3>Total Tuberculose</h3><div class="value">{{ kpis.tuberculose }}</div>
                 </td>
             </tr>
-            {% empty %}
-            <tr><td colspan="4">Nenhum dado de vacinação importado para este ano.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        </table>
 
-    <!-- Tabela de Agravos por UBS -->
-    <h2>🏥 Notificações por Unidade de Saúde ({{ mes_nome }})</h2>
-    <table>
-        <thead>
+        <!-- Tabela de Cobertura Vacinal -->
+        <h2>📊 Cobertura Vacinal ({{ ano }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Imunobiológico</th>
+                    <th>Cobertura (%)</th>
+                    <th>Meta (%)</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vacina in vacinas %}
+                <tr>
+                    <td>{{ vacina.imunobiologico }}</td>
+                    <td>{{ vacina.cobertura_percentual }}%</td>
+                    <td>{{ vacina.meta_otima }}%</td>
+                    <td>
+                        {% if vacina.cobertura_percentual >= vacina.meta_otima %}
+                            <span style="color: green; font-weight: bold;">✔ Atingida</span>
+                        {% else %}
+                            <span style="color: red; font-weight: bold;">✘ Abaixo da Meta</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4">Nenhum dado de vacinação importado para este ano.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Tabela de Agravos por UBS (Dengue) -->
+        <h2>🏥 Notificações de Dengue por Unidade de Saúde ({{ mes_nome }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Unidade (CNES)</th>
+                    <th>Dengue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ubs in agravos_ubs %}
+                <tr>
+                    <td>{{ ubs.id_unidade|default:"Não Informado" }}</td>
+                    <td>{{ ubs.dengue_count }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2">Nenhuma notificação de dengue registrada neste mês.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    {% else %}
+        <!-- ========================================== -->
+        <!-- LAYOUT: POR AGRAVO ESPECÍFICO              -->
+        <!-- ========================================== -->
+
+        <!-- KPI do Agravo -->
+        <table style="width: 100%; margin-bottom: 20px; border: none;">
             <tr>
-                <th>Unidade (CNES)</th>
-                <th>Dengue</th>
+                <td class="kpi-box" style="width: 100%; border-left-color: #dc2626;">
+                    <h3 style="color: #dc2626;">Total de Casos: {{ agravo_nome }}</h3>
+                    <div class="value" style="color: #dc2626;">{{ total_casos }}</div>
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            {% for ubs in agravos_ubs %}
-            <tr>
-                <td>{{ ubs.id_unidade|default:"Não Informado" }}</td>
-                <td>{{ ubs.dengue_count }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="2">Nenhuma notificação de dengue registrada neste mês.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        </table>
+
+        <!-- Tabela de Bairros (Só aparece para Dengue, onde temos endereço) -->
+        {% if bairros %}
+        <h2>📍 Top 10 Bairros com mais notificações ({{ agravo_nome }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Bairro</th>
+                    <th>Casos Notificados</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bairro, qtd in bairros %}
+                <tr>
+                    <td>{{ bairro }}</td>
+                    <td>{{ qtd }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        <!-- Tabela por UBS -->
+        <h2>🏥 Notificações de {{ agravo_nome }} por {{ campo_ubs }} ({{ mes_nome }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>{{ campo_ubs }}</th>
+                    <th>Total de Casos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ubs in agravos_ubs %}
+                <tr>
+                    <!-- Verifica qual campo de UBS está preenchido para exibir -->
+                    <td>
+                        {% if ubs.id_unidade %}{{ ubs.id_unidade }}
+                        {% elif ubs.nm_ubs %}{{ ubs.nm_ubs }}
+                        {% elif ubs.un_saude %}{{ ubs.un_saude }}
+                        {% else %}Não Informado{% endif %}
+                    </td>
+                    <td>{{ ubs.total }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2">Nenhum caso registrado para este agravo no período.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
 </body>
 </html>
