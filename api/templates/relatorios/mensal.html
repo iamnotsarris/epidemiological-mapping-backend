@@ -1,0 +1,105 @@
+<!-- api/templates/relatorios/mensal.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 10px; color: #666; }
+        }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; }
+        .header { text-align: center; border-bottom: 3px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { color: #1e3a8a; margin: 0; font-size: 24px; }
+        .header p { margin: 5px 0 0 0; color: #666; font-size: 14px; }
+
+        .kpi-box { background-color: #f3f4f6; border-left: 5px solid #1e3a8a; padding: 15px; width: 30%; }
+        .kpi-box h3 { margin: 0 0 5px 0; font-size: 14px; color: #666; text-transform: uppercase; }
+        .kpi-box .value { font-size: 28px; font-weight: bold; color: #1e3a8a; }
+
+        h2 { color: #1e3a8a; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 30px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background-color: #1e3a8a; color: white; padding: 10px; text-align: left; font-size: 14px; }
+        td { padding: 8px 10px; border-bottom: 1px solid #ddd; font-size: 13px; }
+        tr:nth-child(even) { background-color: #f9fafb; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Relatório Epidemiológico Mensal</h1>
+        <p>SIGEP - Secretaria de Saúde de Floriano-PI | Referência: {{ mes_nome }}/{{ ano }}</p>
+    </div>
+
+    <!-- KPIs -->
+    <table style="width: 100%; margin-bottom: 20px; border: none;">
+        <tr>
+            <td class="kpi-box">
+                <h3>Total Dengue</h3>
+                <div class="value">{{ kpis.dengue }}</div>
+            </td>
+            <td class="kpi-box">
+                <h3>Total Sífilis</h3>
+                <div class="value">{{ kpis.sifilis }}</div>
+            </td>
+            <td class="kpi-box">
+                <h3>Total Tuberculose</h3>
+                <div class="value">{{ kpis.tuberculose }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Tabela de Cobertura Vacinal -->
+    <h2>📊 Cobertura Vacinal ({{ ano }})</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Imunobiológico</th>
+                <th>Cobertura (%)</th>
+                <th>Meta (%)</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for vacina in vacinas %}
+            <tr>
+                <td>{{ vacina.imunobiologico }}</td>
+                <td>{{ vacina.cobertura_percentual }}%</td>
+                <td>{{ vacina.meta_otima }}%</td>
+                <td>
+                    {% if vacina.cobertura_percentual >= vacina.meta_otima %}
+                        <span style="color: green; font-weight: bold;">✔ Atingida</span>
+                    {% else %}
+                        <span style="color: red; font-weight: bold;">✘ Abaixo da Meta</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">Nenhum dado de vacinação importado para este ano.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Tabela de Agravos por UBS -->
+    <h2>🏥 Notificações por Unidade de Saúde ({{ mes_nome }})</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Unidade (CNES)</th>
+                <th>Dengue</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ubs in agravos_ubs %}
+            <tr>
+                <td>{{ ubs.id_unidade|default:"Não Informado" }}</td>
+                <td>{{ ubs.dengue_count }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2">Nenhuma notificação de dengue registrada neste mês.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

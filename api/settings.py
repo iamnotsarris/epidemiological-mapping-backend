@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     "api",
+    'relatorios',
 ]
 
 MIDDLEWARE = [
@@ -176,3 +177,5 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
+
+WEASYPRINT_DLL_DIRECTORIES = r"C:\Program Files\GTK3-Runtime Win64\bin"

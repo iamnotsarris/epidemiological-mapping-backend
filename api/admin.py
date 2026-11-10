@@ -3,13 +3,15 @@ from django.contrib import admin, messages
 from django.http import HttpResponse
 from dbfread import DBF
 import pandas as pd
+from django.core.files.base import ContentFile
+from .utils.gerador_pdf import gerar_relatorio_mensal
 from .utils.importador_dbf import processar_arquivo_dbf, processar_registros
 from .utils.exportador import exportar
 from .models import (
     PacienteDengue, PacienteTuberculose, PacienteSifilis, UploadDBF,
     PacienteChagas, PacienteViolenciaDomestica, PacienteHans,
     PacienteHepatite, PacienteAnimaisPec, PacienteIntoxicacao,
-    PacienteLeish, PacienteAidsAdulto, CoberturaVacinal, PerfilUsuario,
+    PacienteLeish, PacienteAidsAdulto, CoberturaVacinal, PerfilUsuario
 )
 from datetime import datetime
 

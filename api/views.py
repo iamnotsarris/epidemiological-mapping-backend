@@ -18,6 +18,7 @@ from rest_framework.decorators import (
 )
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import (
@@ -40,6 +41,7 @@ from api.utils.embedding_manager import EmbeddingManager
 from .utils.importador_dbf import processar_arquivo_dbf, processar_registros
 from django.http import HttpResponse
 from .utils.exportador import exportar, FORMATOS_SUPORTADOS
+from .utils.gerador_pdf import gerar_relatorio_mensal
 
 load_dotenv()
 
@@ -691,3 +693,30 @@ def sincronizar_api_governo(request):
 
     return Response({"status": "sucesso",
                      "mensagem": f"{processadas} vacinas sincronizadas."})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_relatorio_mensal(request):
+    mes = request.query_params.get('mes')
+    ano = request.query_params.get('ano')
+
+    if not mes or not ano:
+        return Response({"erro": "Informe 'mes' e 'ano' na URL (ex: ?mes=10&ano=2026)."}, status=400)
+
+    try:
+        mes = int(mes)
+        ano = int(ano)
+    except ValueError:
+        return Response({"erro": "Mês e ano devem ser números inteiros."}, status=400)
+
+    try:
+        # ✅ Pega os bytes em memória direto
+        pdf_bytes = gerar_relatorio_mensal(mes, ano)
+
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="relatorio_{mes:02d}_{ano}.pdf"'
+        return response
+
+    except Exception as e:
+        return Response({"erro": f"Falha ao gerar PDF: {str(e)}"}, status=500)
