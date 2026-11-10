@@ -28,16 +28,12 @@
 </head>
 <body>
     <div class="header">
-        <h1>Relatório Epidemiológico Mensal</h1>
-        <p>SIGEP - Secretaria de Saúde de Floriano-PI | Referência: {{ mes_nome }}/{{ ano }}</p>
+        <h1>Relatório Epidemiológico</h1>
+        <p>SIGEP - Secretaria de Saúde de Floriano-PI | Referência: {{ periodo }}</p>
     </div>
 
     {% if agravo == 'geral' %}
-        <!-- ========================================== -->
-        <!-- LAYOUT: PANORAMA GERAL                     -->
-        <!-- ========================================== -->
-
-        <!-- KPIs Gerais -->
+        <!-- LAYOUT: PANORAMA GERAL -->
         <table style="width: 100%; margin-bottom: 20px; border: none;">
             <tr>
                 <td class="kpi-box" style="width: 33%;">
@@ -52,7 +48,6 @@
             </tr>
         </table>
 
-        <!-- Tabela de Cobertura Vacinal -->
         <h2>📊 Cobertura Vacinal ({{ ano }})</h2>
         <table>
             <thead>
@@ -83,8 +78,7 @@
             </tbody>
         </table>
 
-        <!-- Tabela de Agravos por UBS (Dengue) -->
-        <h2>🏥 Notificações de Dengue por Unidade de Saúde ({{ mes_nome }})</h2>
+        <h2>🏥 Notificações de Dengue por Unidade de Saúde ({{ periodo }})</h2>
         <table>
             <thead>
                 <tr>
@@ -99,17 +93,13 @@
                     <td>{{ ubs.dengue_count }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="2">Nenhuma notificação de dengue registrada neste mês.</td></tr>
+                <tr><td colspan="2">Nenhuma notificação de dengue registrada no período.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
 
     {% else %}
-        <!-- ========================================== -->
-        <!-- LAYOUT: POR AGRAVO ESPECÍFICO              -->
-        <!-- ========================================== -->
-
-        <!-- KPI do Agravo -->
+        <!-- LAYOUT: POR AGRAVO ESPECÍFICO -->
         <table style="width: 100%; margin-bottom: 20px; border: none;">
             <tr>
                 <td class="kpi-box" style="width: 100%; border-left-color: #dc2626;">
@@ -119,7 +109,6 @@
             </tr>
         </table>
 
-        <!-- Tabela de Bairros (Só aparece para Dengue, onde temos endereço) -->
         {% if bairros %}
         <h2>📍 Top 10 Bairros com mais notificações ({{ agravo_nome }})</h2>
         <table>
@@ -140,8 +129,7 @@
         </table>
         {% endif %}
 
-        <!-- Tabela por UBS -->
-        <h2>🏥 Notificações de {{ agravo_nome }} por {{ campo_ubs }} ({{ mes_nome }})</h2>
+        <h2>🏥 Notificações de {{ agravo_nome }} por {{ campo_ubs }} ({{ periodo }})</h2>
         <table>
             <thead>
                 <tr>
@@ -152,7 +140,6 @@
             <tbody>
                 {% for ubs in agravos_ubs %}
                 <tr>
-                    <!-- Verifica qual campo de UBS está preenchido para exibir -->
                     <td>
                         {% if ubs.id_unidade %}{{ ubs.id_unidade }}
                         {% elif ubs.nm_ubs %}{{ ubs.nm_ubs }}
@@ -167,6 +154,5 @@
             </tbody>
         </table>
     {% endif %}
-
 </body>
 </html>

@@ -700,23 +700,32 @@ def sincronizar_api_governo(request):
 def download_relatorio_mensal(request):
     mes = request.query_params.get('mes')
     ano = request.query_params.get('ano')
-    agravo = request.query_params.get('agravo', 'geral')  # ✅ Alterado para 'agravo'
+    agravo = request.query_params.get('agravo', 'geral')
 
-    if not mes or not ano:
-        return Response({"erro": "Informe 'mes' e 'ano' na URL (ex: ?mes=10&ano=2026)."}, status=400)
+    if not ano:
+        return Response({"erro": "Informe o 'ano' na URL."}, status=400)
 
     try:
-        mes = int(mes)
         ano = int(ano)
+        # Se o mês vier vazio ou a string 'todos', passamos como None
+        if mes and str(mes).isdigit() and int(mes) > 0:
+            mes = int(mes)
+        else:
+            mes = None
     except ValueError:
-        return Response({"erro": "Mês e ano devem ser números inteiros."}, status=400)
+        return Response({"erro": "Ano/Mês inválidos."}, status=400)
 
     try:
-        # ✅ Passa o agravo para o gerador
         pdf_bytes = gerar_relatorio_mensal(mes, ano, agravo)
 
+        # Nome do arquivo adaptado (Mensal vs Anual)
+        if mes:
+            nome_arquivo = f"relatorio_{agravo}_{mes:02d}_{ano}.pdf"
+        else:
+            nome_arquivo = f"relatorio_{agravo}_anual_{ano}.pdf"
+
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="relatorio_{agravo}_{mes:02d}_{ano}.pdf"'
+        response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
         return response
 
     except Exception as e:

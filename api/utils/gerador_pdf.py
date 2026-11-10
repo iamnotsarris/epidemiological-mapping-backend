@@ -7,26 +7,44 @@ from api.models import PacienteDengue, PacienteSifilis, PacienteTuberculose, Cob
 from api.utils.assistente import DOENCAS, _normalizar_doenca
 
 
-def gerar_relatorio_mensal(mes, ano, agravo='geral'):  # ✅ Alterado para agravo
+def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
     MESES_NOMES = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro",
                    "Outubro", "Novembro", "Dezembro"]
 
+    # Define o texto do período (Mensal ou Anual)
+    if mes and int(mes) > 0:
+        mes = int(mes)
+        periodo = f"{MESES_NOMES[mes]}/{ano}"
+    else:
+        mes = None
+        periodo = f"Anual/{ano}"
+
     context = {
-        "mes": mes, "mes_nome": MESES_NOMES[mes], "ano": ano, "agravo": agravo  # ✅ Enviando 'agravo' para o HTML
+        "ano": ano,
+        "agravo": agravo,
+        "periodo": periodo
     }
 
     if agravo == 'geral':
         # --- LÓGICA DO PANORAMA GERAL ---
-        kpis = {
-            "dengue": PacienteDengue.objects.filter(data_notificacao__month=mes, data_notificacao__year=ano).count(),
-            "sifilis": PacienteSifilis.objects.filter(data_notificacao__month=mes, data_notificacao__year=ano).count(),
-            "tuberculose": PacienteTuberculose.objects.filter(ano_notific=str(ano)).count(),
-        }
-        vacinas = CoberturaVacinal.objects.filter(ano=ano).order_by('imunobiologico')
+        qs_dengue = PacienteDengue.objects.filter(data_notificacao__year=ano)
+        qs_sifilis = PacienteSifilis.objects.filter(data_notificacao__year=ano)
 
-        agravos_ubs = PacienteDengue.objects.filter(
-            data_notificacao__month=mes, data_notificacao__year=ano
-        ).values('id_unidade').annotate(dengue_count=Count('id')).order_by('-dengue_count')[:10]
+        # Tuberculose usa ano_notific (texto), então só filtra por ano
+        qs_tuberculose = PacienteTuberculose.objects.filter(ano_notific=str(ano))
+
+        if mes:
+            qs_dengue = qs_dengue.filter(data_notificacao__month=mes)
+            qs_sifilis = qs_sifilis.filter(data_notificacao__month=mes)
+
+        kpis = {
+            "dengue": qs_dengue.count(),
+            "sifilis": qs_sifilis.count(),
+            "tuberculose": qs_tuberculose.count(),
+        }
+
+        vacinas = CoberturaVacinal.objects.filter(ano=ano).order_by('imunobiologico')
+        agravos_ubs = qs_dengue.values('id_unidade').annotate(dengue_count=Count('id')).order_by('-dengue_count')[:10]
 
         context.update({"kpis": kpis, "vacinas": vacinas, "agravos_ubs": agravos_ubs})
 
@@ -43,8 +61,12 @@ def gerar_relatorio_mensal(mes, ano, agravo='geral'):  # ✅ Alterado para agrav
         campo_ubs = info['campo_ubs']
 
         qs = modelo.objects.all()
+
+        # Filtra apenas pelo ano base
         if 'data_notificacao' in campo_ano:
-            qs = qs.filter(data_notificacao__month=mes, data_notificacao__year=ano)
+            qs = qs.filter(data_notificacao__year=ano)
+            if mes:
+                qs = qs.filter(data_notificacao__month=mes)  # Aplica o mês se existir e for data
         else:
             qs = qs.filter(**{campo_ano: str(ano)})
 
@@ -65,7 +87,7 @@ def gerar_relatorio_mensal(mes, ano, agravo='geral'):  # ✅ Alterado para agrav
             bairros = sorted(contagem.items(), key=lambda x: x[1], reverse=True)[:10]
 
         context.update({
-            "agravo_nome": chave.capitalize(),  # ✅ Alterado para agravo_nome
+            "agravo_nome": chave.capitalize(),
             "total_casos": total_casos,
             "agravos_ubs": agravos_ubs,
             "campo_ubs": campo_ubs.replace('_', ' ').title(),
