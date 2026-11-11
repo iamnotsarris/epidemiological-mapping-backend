@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     "api",
-    'relatorios',
+    "relatorios",
+    "cobertura_vacinal",
 ]
 
 MIDDLEWARE = [

@@ -5,8 +5,10 @@ from .models import (
     PacienteDengue, PacienteTuberculose, PacienteSifilis, PacienteChagas,
     PacienteViolenciaDomestica, PacienteHans, PacienteHepatite,
     PacienteAnimaisPec, PacienteIntoxicacao, PacienteLeish,
-    PacienteAidsAdulto, CoberturaVacinal,
+    PacienteAidsAdulto,
 )
+
+from cobertura_vacinal.models import CoberturaVacinal
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):

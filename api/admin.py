@@ -11,8 +11,10 @@ from .models import (
     PacienteDengue, PacienteTuberculose, PacienteSifilis, UploadDBF,
     PacienteChagas, PacienteViolenciaDomestica, PacienteHans,
     PacienteHepatite, PacienteAnimaisPec, PacienteIntoxicacao,
-    PacienteLeish, PacienteAidsAdulto, CoberturaVacinal, PerfilUsuario
+    PacienteLeish, PacienteAidsAdulto, PerfilUsuario
 )
+
+from cobertura_vacinal.models import CoberturaVacinal
 from datetime import datetime
 
 
@@ -129,19 +131,6 @@ class PacienteLeishAdmin(BaseExportAdmin):
 class PacienteAidsAdultoAdmin(BaseExportAdmin):
     list_display = ("id_unidade", "nm_ubs", "hospital", "ano_notific", "nu_notific")
     search_fields = ("id_unidade", "nm_ubs", "hospital", "ano_notific", "nu_notific")
-
-
-@admin.register(CoberturaVacinal)
-class CoberturaVacinalAdmin(BaseExportAdmin):
-    list_display = (
-        "ano", "imunobiologico", "cobertura_percentual",
-        "meta_otima", "data_atualizacao",
-    )
-    search_fields = (
-        "ano", "imunobiologico", "cobertura_percentual",
-        "meta_otima", "data_atualizacao",
-    )
-
 
 @admin.register(UploadDBF)
 class UploadDBFAdmin(admin.ModelAdmin):
