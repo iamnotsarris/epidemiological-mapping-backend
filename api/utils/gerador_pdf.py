@@ -3,7 +3,7 @@ import io
 from xhtml2pdf import pisa
 from django.template.loader import render_to_string
 from django.db.models import Count
-from api.models import PacienteDengue, PacienteSifilis, PacienteTuberculose, CoberturaVacinal
+from api.models import PacienteDengue
 from api.utils.assistente import DOENCAS, _normalizar_doenca
 
 
@@ -26,27 +26,40 @@ def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
     }
 
     if agravo == 'geral':
-        # --- LÓGICA DO PANORAMA GERAL ---
+        # --- LÓGICA DO PANORAMA GERAL (TODAS AS DOENÇAS) ---
+        totais_gerais = {}
+
+        # Itera sobre todas as doenças cadastradas no assistente
+        for chave, info in DOENCAS.items():
+            modelo = info['modelo']
+            campo_ano = info['campo_ano']
+
+            qs = modelo.objects.all()
+
+            # Filtra por Ano e Mês (se aplicável)
+            if 'data_notificacao' in campo_ano:
+                qs = qs.filter(data_notificacao__year=ano)
+                if mes:
+                    qs = qs.filter(data_notificacao__month=mes)
+            else:
+                # Doenças que usam campo de texto (ex: ano_notific)
+                qs = qs.filter(**{campo_ano: str(ano)})
+
+            totais_gerais[chave] = qs.count()
+
+        # Mantém a quebra de Dengue por UBS como um extra no relatório geral
         qs_dengue = PacienteDengue.objects.filter(data_notificacao__year=ano)
-        qs_sifilis = PacienteSifilis.objects.filter(data_notificacao__year=ano)
-
-        # Tuberculose usa ano_notific (texto), então só filtra por ano
-        qs_tuberculose = PacienteTuberculose.objects.filter(ano_notific=str(ano))
-
         if mes:
             qs_dengue = qs_dengue.filter(data_notificacao__month=mes)
-            qs_sifilis = qs_sifilis.filter(data_notificacao__month=mes)
 
-        kpis = {
-            "dengue": qs_dengue.count(),
-            "sifilis": qs_sifilis.count(),
-            "tuberculose": qs_tuberculose.count(),
-        }
+        agravos_ubs = qs_dengue.values('id_unidade').annotate(
+            dengue_count=Count('id')
+        ).order_by('-dengue_count')[:10]
 
-        vacinas = CoberturaVacinal.objects.filter(ano=ano).order_by('imunobiologico')
-        agravos_ubs = qs_dengue.values('id_unidade').annotate(dengue_count=Count('id')).order_by('-dengue_count')[:10]
-
-        context.update({"kpis": kpis, "vacinas": vacinas, "agravos_ubs": agravos_ubs})
+        context.update({
+            "totais_gerais": totais_gerais,
+            "agravos_ubs": agravos_ubs
+        })
 
     else:
         # --- LÓGICA ESPECÍFICA DO AGRAVO ---
@@ -62,11 +75,10 @@ def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
 
         qs = modelo.objects.all()
 
-        # Filtra apenas pelo ano base
         if 'data_notificacao' in campo_ano:
             qs = qs.filter(data_notificacao__year=ano)
             if mes:
-                qs = qs.filter(data_notificacao__month=mes)  # Aplica o mês se existir e for data
+                qs = qs.filter(data_notificacao__month=mes)
         else:
             qs = qs.filter(**{campo_ano: str(ano)})
 

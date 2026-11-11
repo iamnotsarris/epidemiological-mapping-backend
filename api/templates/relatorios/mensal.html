@@ -33,57 +33,34 @@
     </div>
 
     {% if agravo == 'geral' %}
-        <!-- LAYOUT: PANORAMA GERAL -->
-        <table style="width: 100%; margin-bottom: 20px; border: none;">
-            <tr>
-                <td class="kpi-box" style="width: 33%;">
-                    <h3>Total Dengue</h3><div class="value">{{ kpis.dengue }}</div>
-                </td>
-                <td class="kpi-box" style="width: 33%;">
-                    <h3>Total Sífilis</h3><div class="value">{{ kpis.sifilis }}</div>
-                </td>
-                <td class="kpi-box" style="width: 33%;">
-                    <h3>Total Tuberculose</h3><div class="value">{{ kpis.tuberculose }}</div>
-                </td>
-            </tr>
-        </table>
+        <!-- LAYOUT: PANORAMA GERAL (TODAS AS DOENÇAS) -->
 
-        <h2>📊 Cobertura Vacinal ({{ ano }})</h2>
+        <h2>📊 Panorama Geral de Agravos</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Imunobiológico</th>
-                    <th>Cobertura (%)</th>
-                    <th>Meta (%)</th>
-                    <th>Status</th>
+                    <th>Agravo / Endemia</th>
+                    <th>Total de Casos</th>
                 </tr>
             </thead>
             <tbody>
-                {% for vacina in vacinas %}
+                {% for doenca, total in totais_gerais.items %}
                 <tr>
-                    <td>{{ vacina.imunobiologico }}</td>
-                    <td>{{ vacina.cobertura_percentual }}%</td>
-                    <td>{{ vacina.meta_otima }}%</td>
-                    <td>
-                        {% if vacina.cobertura_percentual >= vacina.meta_otima %}
-                            <span style="color: green; font-weight: bold;">✔ Atingida</span>
-                        {% else %}
-                            <span style="color: red; font-weight: bold;">✘ Abaixo da Meta</span>
-                        {% endif %}
-                    </td>
+                    <!-- O filtro title deixa a primeira letra de cada palavra maiúscula -->
+                    <td>{{ doenca|title }}</td>
+                    <td>{{ total }}</td>
                 </tr>
-                {% empty %}
-                <tr><td colspan="4">Nenhum dado de vacinação importado para este ano.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
 
+        <!-- Tabela extra: Dengue por UBS -->
         <h2>🏥 Notificações de Dengue por Unidade de Saúde ({{ periodo }})</h2>
         <table>
             <thead>
                 <tr>
                     <th>Unidade (CNES)</th>
-                    <th>Dengue</th>
+                    <th>Casos de Dengue</th>
                 </tr>
             </thead>
             <tbody>
