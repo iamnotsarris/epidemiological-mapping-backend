@@ -3,45 +3,38 @@ import io
 from xhtml2pdf import pisa
 from django.template.loader import render_to_string
 from django.db.models import Count, Sum, IntegerField
-from django.db.models.functions import Trim, Upper, Cast
+from django.db.models.functions import Cast
 from api.models import PacienteDengue
 from api.utils.assistente import DOENCAS, _normalizar_doenca
 
 
 def _get_campo_notificacao(modelo):
-    """Retorna o nome do campo que identifica a notificação no modelo."""
-    for campo in ['nu_notific', 'numero_notificacao']:
-        try:
-            modelo._meta.get_field(campo)
-            return campo
-        except Exception:
-            pass
+    """Identifica qual campo de notificação o modelo usa."""
+    if hasattr(modelo, 'numero_notificacao'):
+        return 'numero_notificacao'  # Usado na Dengue (ID da ficha)
+    elif hasattr(modelo, 'nu_notific'):
+        return 'nu_notific'  # Usado nas outras (Quantidade de casos)
     return None
 
 
-def _calcular_total_casos(qs, modelo):
-    """
-    Soma o valor do campo de notificação (ex: 95 + 3 + 19 + 1 = 118).
-    Se o campo não for numérico, faz a contagem padrão (distinct).
-    """
-    campo = _get_campo_notificacao(modelo)
-    if campo:
-        qs_valido = qs.exclude(**{f"{campo}__isnull": True}).exclude(**{campo: ''})
+def _calcular_total(qs, campo):
+    """Aplica a regra correta dependendo do campo."""
+    if not campo:
+        return qs.count()
+
+    qs_valido = qs.exclude(**{f"{campo}__isnull": True}).exclude(**{campo: ''})
+
+    if campo == 'nu_notific':
+        # Se for 'nu_notific', SOMAMOS os valores (pois representam a qtd de casos)
         try:
-            # Tenta converter para inteiro e somar
-            total_soma = qs_valido.annotate(
-                valor_int=Cast(campo, IntegerField())
-            ).aggregate(total=Sum('valor_int'))['total']
-
-            if total_soma is not None:
-                return total_soma
+            total = qs_valido.annotate(v_int=Cast(campo, IntegerField())).aggregate(soma=Sum('v_int'))['soma']
+            return total or 0
         except Exception:
-            # Fallback: se houver letras no campo, conta as notificações únicas
-            return qs_valido.annotate(
-                _notific_limpa=Upper(Trim(campo))
-            ).exclude(_notific_limpa='').values('_notific_limpa').distinct().count()
-
-    return qs.count()
+            # Fallback caso tenha texto
+            return qs_valido.values(campo).distinct().count()
+    else:
+        # Se for 'numero_notificacao' (Dengue), CONTAMOS os IDs únicos
+        return qs_valido.values(campo).distinct().count()
 
 
 def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
@@ -77,7 +70,8 @@ def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
             else:
                 qs = qs.filter(**{campo_ano: str(ano)})
 
-            totais_gerais[chave] = _calcular_total_casos(qs, modelo)
+            campo = _get_campo_notificacao(modelo)
+            totais_gerais[chave] = _calcular_total(qs, campo)
 
         # Dengue por UBS
         qs_dengue = PacienteDengue.objects.filter(data_notificacao__year=ano)
@@ -86,16 +80,10 @@ def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
 
         qs_dengue_validas = qs_dengue.exclude(numero_notificacao__isnull=True).exclude(numero_notificacao='')
 
-        try:
-            agravos_ubs = qs_dengue_validas.values('id_unidade').annotate(
-                dengue_count=Sum(Cast('numero_notificacao', IntegerField()))
-            ).order_by('-dengue_count')[:10]
-        except Exception:
-            agravos_ubs = qs_dengue_validas.annotate(
-                _notific_limpa=Upper(Trim('numero_notificacao'))
-            ).exclude(_notific_limpa='').values('id_unidade').annotate(
-                dengue_count=Count('_notific_limpa', distinct=True)
-            ).order_by('-dengue_count')[:10]
+        # Dengue conta IDs únicos
+        agravos_ubs = qs_dengue_validas.values('id_unidade').annotate(
+            dengue_count=Count('numero_notificacao', distinct=True)
+        ).order_by('-dengue_count')[:10]
 
         context.update({
             "totais_gerais": totais_gerais,
@@ -122,23 +110,26 @@ def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
         else:
             qs = qs.filter(**{campo_ano: str(ano)})
 
-        total_casos = _calcular_total_casos(qs, modelo)
-
         campo_notificacao = _get_campo_notificacao(modelo)
+        total_casos = _calcular_total(qs, campo_notificacao)
+
         if campo_notificacao:
             qs_validas = qs.exclude(**{f"{campo_notificacao}__isnull": True}).exclude(**{campo_notificacao: ''})
-            try:
-                # Soma a quantidade de casos agrupados por UBS
+
+            if campo_notificacao == 'nu_notific':
+                # Soma os casos por UBS (Violência, etc)
+                try:
+                    agravos_ubs = qs_validas.values(campo_ubs).annotate(
+                        total=Sum(Cast(campo_notificacao, IntegerField()))
+                    ).order_by('-total')[:15]
+                except Exception:
+                    agravos_ubs = qs_validas.values(campo_ubs).annotate(
+                        total=Count(campo_notificacao, distinct=True)
+                    ).order_by('-total')[:15]
+            else:
+                # Conta IDs distintos por UBS (Dengue)
                 agravos_ubs = qs_validas.values(campo_ubs).annotate(
-                    total=Sum(Cast(campo_notificacao, IntegerField()))
-                ).order_by('-total')[:15]
-            except Exception:
-                # Fallback se houver letras
-                qs_texto = qs_validas.annotate(
-                    _notific_limpa=Upper(Trim(campo_notificacao))
-                ).exclude(_notific_limpa='')
-                agravos_ubs = qs_texto.values(campo_ubs).annotate(
-                    total=Count('_notific_limpa', distinct=True)
+                    total=Count(campo_notificacao, distinct=True)
                 ).order_by('-total')[:15]
         else:
             agravos_ubs = qs.values(campo_ubs).annotate(
@@ -149,6 +140,7 @@ def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
         if chave == 'dengue':
             from api.utils.importador_dbf import extrair_bairro
             contagem = {}
+            # Conta IDs únicos por bairro
             for endereco, num_not in qs.exclude(endereco__isnull=True).exclude(endereco='').exclude(
                     numero_notificacao__isnull=True).exclude(numero_notificacao='').values_list('endereco',
                                                                                                 'numero_notificacao').distinct().iterator():
