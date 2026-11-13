@@ -1,0 +1,135 @@
+<!-- api/templates/relatorios/mensal.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 10px; color: #666; }
+        }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; }
+        .header { text-align: center; border-bottom: 3px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { color: #1e3a8a; margin: 0; font-size: 24px; }
+        .header p { margin: 5px 0 0 0; color: #666; font-size: 14px; }
+
+        .kpi-box { background-color: #f3f4f6; border-left: 5px solid #1e3a8a; padding: 15px; text-align: center; }
+        .kpi-box h3 { margin: 0 0 5px 0; font-size: 14px; color: #666; text-transform: uppercase; }
+        .kpi-box .value { font-size: 32px; font-weight: bold; color: #1e3a8a; }
+
+        h2 { color: #1e3a8a; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 30px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background-color: #1e3a8a; color: white; padding: 10px; text-align: left; font-size: 14px; }
+        td { padding: 8px 10px; border-bottom: 1px solid #ddd; font-size: 13px; }
+        tr:nth-child(even) { background-color: #f9fafb; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Relatório Epidemiológico</h1>
+        <p>SIGEP - Secretaria de Saúde de Floriano-PI | Referência: {{ periodo }}</p>
+    </div>
+
+    {% if agravo == 'geral' %}
+        <!-- LAYOUT: PANORAMA GERAL (TODAS AS DOENÇAS) -->
+
+        <h2>📊 Panorama Geral de Agravos</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Agravo / Endemia</th>
+                    <th>Total de Casos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doenca, total in totais_gerais.items %}
+                <tr>
+                    <!-- O filtro title deixa a primeira letra de cada palavra maiúscula -->
+                    <td>{{ doenca|title }}</td>
+                    <td>{{ total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Tabela extra: Dengue por UBS -->
+        <h2>🏥 Notificações de Dengue por Unidade de Saúde ({{ periodo }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Unidade (CNES)</th>
+                    <th>Casos de Dengue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ubs in agravos_ubs %}
+                <tr>
+                    <td>{{ ubs.id_unidade|default:"Não Informado" }}</td>
+                    <td>{{ ubs.dengue_count }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2">Nenhuma notificação de dengue registrada no período.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    {% else %}
+        <!-- LAYOUT: POR AGRAVO ESPECÍFICO -->
+        <table style="width: 100%; margin-bottom: 20px; border: none;">
+            <tr>
+                <td class="kpi-box" style="width: 100%; border-left-color: #dc2626;">
+                    <h3 style="color: #dc2626;">Total de Casos: {{ agravo_nome }}</h3>
+                    <div class="value" style="color: #dc2626;">{{ total_casos }}</div>
+                </td>
+            </tr>
+        </table>
+
+        {% if bairros %}
+        <h2>📍 Top 10 Bairros com mais notificações ({{ agravo_nome }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Bairro</th>
+                    <th>Casos Notificados</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bairro, qtd in bairros %}
+                <tr>
+                    <td>{{ bairro }}</td>
+                    <td>{{ qtd }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        <h2>🏥 Notificações de {{ agravo_nome }} por {{ campo_ubs }} ({{ periodo }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>{{ campo_ubs }}</th>
+                    <th>Total de Casos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ubs in agravos_ubs %}
+                <tr>
+                    <td>
+                        {% if ubs.id_unidade %}{{ ubs.id_unidade }}
+                        {% elif ubs.nm_ubs %}{{ ubs.nm_ubs }}
+                        {% elif ubs.un_saude %}{{ ubs.un_saude }}
+                        {% else %}Não Informado{% endif %}
+                    </td>
+                    <td>{{ ubs.total }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2">Nenhum caso registrado para este agravo no período.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</body>
+</html>

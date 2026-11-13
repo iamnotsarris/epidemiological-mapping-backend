@@ -2,8 +2,11 @@ import os
 from api.models import (
     PacienteDengue, PacienteTuberculose, PacienteSifilis, PacienteViolenciaDomestica,
     PacienteChagas, PacienteHans, PacienteHepatite, PacienteAnimaisPec,
-    PacienteIntoxicacao, PacienteLeish, PacienteAidsAdulto, CoberturaVacinal,
+    PacienteIntoxicacao, PacienteLeish, PacienteAidsAdulto,
 )
+
+from cobertura_vacinal.models import CoberturaVacinal
+
 from dbfread import DBF
 from datetime import datetime, date
 import unicodedata

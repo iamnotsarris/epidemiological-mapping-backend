@@ -18,14 +18,18 @@ from rest_framework.decorators import (
 )
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import (
     PacienteDengue, PacienteTuberculose, PacienteSifilis, PacienteChagas,
     PacienteViolenciaDomestica, PacienteHans, PacienteHepatite,
     PacienteAnimaisPec, PacienteIntoxicacao, PacienteLeish,
-    PacienteAidsAdulto, CoberturaVacinal,
+    PacienteAidsAdulto,
 )
+
+from cobertura_vacinal.models import CoberturaVacinal
+
 from .serializers import (
     PacienteDengueSerializer, PacienteTuberculoseSerializer,
     PacienteSifilisSerializer, PacienteChagasSerializer,
@@ -40,6 +44,7 @@ from api.utils.embedding_manager import EmbeddingManager
 from .utils.importador_dbf import processar_arquivo_dbf, processar_registros
 from django.http import HttpResponse
 from .utils.exportador import exportar, FORMATOS_SUPORTADOS
+from .utils.gerador_pdf import gerar_relatorio_mensal
 
 load_dotenv()
 
@@ -691,3 +696,40 @@ def sincronizar_api_governo(request):
 
     return Response({"status": "sucesso",
                      "mensagem": f"{processadas} vacinas sincronizadas."})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_relatorio_mensal(request):
+    mes = request.query_params.get('mes')
+    ano = request.query_params.get('ano')
+    agravo = request.query_params.get('agravo', 'geral')
+
+    if not ano:
+        return Response({"erro": "Informe o 'ano' na URL."}, status=400)
+
+    try:
+        ano = int(ano)
+        # Se o mês vier vazio ou a string 'todos', passamos como None
+        if mes and str(mes).isdigit() and int(mes) > 0:
+            mes = int(mes)
+        else:
+            mes = None
+    except ValueError:
+        return Response({"erro": "Ano/Mês inválidos."}, status=400)
+
+    try:
+        pdf_bytes = gerar_relatorio_mensal(mes, ano, agravo)
+
+        # Nome do arquivo adaptado (Mensal vs Anual)
+        if mes:
+            nome_arquivo = f"relatorio_{agravo}_{mes:02d}_{ano}.pdf"
+        else:
+            nome_arquivo = f"relatorio_{agravo}_anual_{ano}.pdf"
+
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
+        return response
+
+    except Exception as e:
+        return Response({"erro": f"Falha ao gerar PDF: {str(e)}"}, status=500)

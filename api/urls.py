@@ -39,4 +39,7 @@ urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Rota da Interface Gráfica do Swagger UI
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+
+    # Rota do Relatório
+    path('api/relatorios/mensal/', views.download_relatorio_mensal, name='download_relatorio_mensal'),
 ]
