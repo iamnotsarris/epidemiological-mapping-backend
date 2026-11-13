@@ -13,28 +13,31 @@ def _get_campo_notificacao(modelo):
     if hasattr(modelo, 'numero_notificacao'):
         return 'numero_notificacao'  # Usado na Dengue (ID da ficha)
     elif hasattr(modelo, 'nu_notific'):
-        return 'nu_notific'  # Usado nas outras (Quantidade de casos)
+        return 'nu_notific'  # Usado nas outras (ID ou Quantidade)
     return None
 
 
-def _calcular_total(qs, campo):
-    """Aplica a regra correta dependendo do campo."""
+def _calcular_total(qs, campo, chave):
+    """Aplica a regra correta dependendo do campo e da doença."""
     if not campo:
         return qs.count()
 
     qs_valido = qs.exclude(**{f"{campo}__isnull": True}).exclude(**{campo: ''})
 
-    if campo == 'nu_notific':
-        # Se for 'nu_notific', SOMAMOS os valores (pois representam a qtd de casos)
+    # Doenças onde o campo NU_NOTIFIC é o ID da ficha (devemos contar, não somar)
+    doencas_contagem = ['dengue', 'sifilis']
+
+    if chave in doencas_contagem or campo == 'numero_notificacao':
+        # Conta IDs únicos (Dengue, Sífilis)
+        return qs_valido.values(campo).distinct().count()
+    else:
+        # Soma os valores (Violência, etc)
         try:
             total = qs_valido.annotate(v_int=Cast(campo, IntegerField())).aggregate(soma=Sum('v_int'))['soma']
             return total or 0
         except Exception:
-            # Fallback caso tenha texto
+            # Fallback caso tenha letras no campo
             return qs_valido.values(campo).distinct().count()
-    else:
-        # Se for 'numero_notificacao' (Dengue), CONTAMOS os IDs únicos
-        return qs_valido.values(campo).distinct().count()
 
 
 def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
@@ -71,7 +74,7 @@ def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
                 qs = qs.filter(**{campo_ano: str(ano)})
 
             campo = _get_campo_notificacao(modelo)
-            totais_gerais[chave] = _calcular_total(qs, campo)
+            totais_gerais[chave] = _calcular_total(qs, campo, chave)
 
         # Dengue por UBS
         qs_dengue = PacienteDengue.objects.filter(data_notificacao__year=ano)
@@ -111,12 +114,15 @@ def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
             qs = qs.filter(**{campo_ano: str(ano)})
 
         campo_notificacao = _get_campo_notificacao(modelo)
-        total_casos = _calcular_total(qs, campo_notificacao)
+        total_casos = _calcular_total(qs, campo_notificacao, chave)
 
         if campo_notificacao:
             qs_validas = qs.exclude(**{f"{campo_notificacao}__isnull": True}).exclude(**{campo_notificacao: ''})
 
-            if campo_notificacao == 'nu_notific':
+            # Mesma regra para agrupar por UBS
+            doencas_contagem = ['dengue', 'sifilis']
+
+            if campo_notificacao == 'nu_notific' and chave not in doencas_contagem:
                 # Soma os casos por UBS (Violência, etc)
                 try:
                     agravos_ubs = qs_validas.values(campo_ubs).annotate(
@@ -127,7 +133,7 @@ def gerar_relatorio_mensal(mes=None, ano=None, agravo='geral'):
                         total=Count(campo_notificacao, distinct=True)
                     ).order_by('-total')[:15]
             else:
-                # Conta IDs distintos por UBS (Dengue)
+                # Conta IDs distintos por UBS (Dengue, Sífilis)
                 agravos_ubs = qs_validas.values(campo_ubs).annotate(
                     total=Count(campo_notificacao, distinct=True)
                 ).order_by('-total')[:15]
