@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from rest_framework import routers
 from api import views
 from api.views import CustomTokenObtainPairView
@@ -8,6 +10,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from canal_comunicacao.views import CanalComunicacaoViewSet
 
 router = routers.DefaultRouter()
 router.register(r'dengue', views.PacienteDengueViewSet, basename='dengue')
@@ -22,6 +25,7 @@ router.register(r'intoxicacao', views.PacienteIntoxicacaoViewSet, basename='into
 router.register(r'leish', views.PacienteLeishViewSet, basename='leish')
 router.register(r'aidsadulta', views.PacienteAidsAdultoViewSet, basename='aidsadulta')
 router.register(r'coberturavacinal', views.CoberturaVacinalViewSet, basename='coberturavacinal')
+router.register(r'canal_comunicacao', CanalComunicacaoViewSet, basename='canal_comunicacao')
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
@@ -43,3 +47,6 @@ urlpatterns = [
     # Rota do Relatório
     path('api/relatorios/mensal/', views.download_relatorio_mensal, name='download_relatorio_mensal'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

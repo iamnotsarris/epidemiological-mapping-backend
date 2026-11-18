@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "api",
     "relatorios",
     "cobertura_vacinal",
+    "canal_comunicacao",
 ]
 
 MIDDLEWARE = [
@@ -178,5 +179,8 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 WEASYPRINT_DLL_DIRECTORIES = r"C:\Program Files\GTK3-Runtime Win64\bin"
