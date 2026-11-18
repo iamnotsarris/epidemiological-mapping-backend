@@ -288,17 +288,27 @@ def _get(record, *keys):
     return None
 
 
-def processar_registros(records, nome_arquivo, cnes_permitido=None):
-    nome_arquivo = nome_arquivo.lower()
+def processar_registros(records, nome_arquivo, tabela_destino=None, cnes_permitido=None):
     modelo_alvo = None
 
-    for chave, modelo in MAPEA_ENDEMIAS.items():
-        if chave in nome_arquivo:
-            modelo_alvo = modelo
-            break
+    # ✅ MELHORIA 1: Prioriza a tabela selecionada no Frontend
+    if tabela_destino:
+        tabela_destino_lower = tabela_destino.lower()
+        for chave, modelo in MAPEA_ENDEMIAS.items():
+            if chave in tabela_destino_lower:
+                modelo_alvo = modelo
+                break
 
     if not modelo_alvo:
-        return {"status": "erro", "mensagem": "Endemia não reconhecida pelo nome do arquivo."}
+        nome_arquivo = nome_arquivo.lower()
+        for chave, modelo in MAPEA_ENDEMIAS.items():
+            if chave in nome_arquivo:
+                modelo_alvo = modelo
+                break
+
+    if not modelo_alvo:
+        return {"status": "erro",
+                "mensagem": "Endemia não reconhecida. Verifique a tabela selecionada ou o nome do arquivo."}
 
     def _montar_endereco(record):
         end_direto = _get(record, 'ENDERECO')
@@ -506,7 +516,13 @@ def processar_registros(records, nome_arquivo, cnes_permitido=None):
     }
 
 
-def processar_arquivo_dbf(caminho_arquivo, nome_original=None, cnes_permitido=None):
+def processar_arquivo_dbf(caminho_arquivo, nome_original=None, tabela_destino=None, cnes_permitido=None):
     nome_arquivo = (nome_original or os.path.basename(caminho_arquivo)).lower()
     tabela = DBF(caminho_arquivo, encoding='iso-8859-1', load=True, ignore_missing_memofile=True)
-    return processar_registros(list(tabela), nome_arquivo, cnes_permitido=cnes_permitido)
+
+    return processar_registros(
+        list(tabela),
+        nome_arquivo,
+        tabela_destino=tabela_destino,
+        cnes_permitido=cnes_permitido
+    )

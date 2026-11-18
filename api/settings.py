@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    'cloudinary_storage',
+    'cloudinary',
     "django.contrib.staticfiles",
     "rest_framework",
     "corsheaders",
@@ -44,6 +46,7 @@ INSTALLED_APPS = [
     "api",
     "relatorios",
     "cobertura_vacinal",
+    "canal_comunicacao",
 ]
 
 MIDDLEWARE = [
@@ -179,4 +182,24 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+}
+
+# 🔥 A forma correta para Django 4.2+ (incluindo o 6.1)
+STORAGES = {
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 WEASYPRINT_DLL_DIRECTORIES = r"C:\Program Files\GTK3-Runtime Win64\bin"
