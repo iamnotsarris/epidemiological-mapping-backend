@@ -733,3 +733,10 @@ def download_relatorio_mensal(request):
 
     except Exception as e:
         return Response({"erro": f"Falha ao gerar PDF: {str(e)}"}, status=500)
+
+def dashboard_callback(request, context):
+    context.update({
+        "total_dengue": PacienteDengue.objects.count(),
+
+    })
+    return context
