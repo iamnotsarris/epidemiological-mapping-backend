@@ -3,6 +3,8 @@ from django.contrib import admin, messages
 from django.http import HttpResponse
 from dbfread import DBF
 import pandas as pd
+from django.contrib import admin
+from unfold.admin import ModelAdmin
 from django.core.files.base import ContentFile
 from .utils.gerador_pdf import gerar_relatorio_mensal
 from .utils.importador_dbf import processar_arquivo_dbf, processar_registros
@@ -18,8 +20,8 @@ from cobertura_vacinal.models import CoberturaVacinal
 from datetime import datetime
 
 
-class BaseExportAdmin(admin.ModelAdmin):
-    """Adiciona 3 ações de exportação (CSV, XLSX, DBF) a qualquer ModelAdmin."""
+class BaseExportAdmin(ModelAdmin):
+    """..."""
     actions = ["acao_exportar_csv", "acao_exportar_xlsx", "acao_exportar_dbf"]
 
     def _exportar_queryset(self, request, queryset, formato):
@@ -133,7 +135,7 @@ class PacienteAidsAdultoAdmin(BaseExportAdmin):
     search_fields = ("id_unidade", "nm_ubs", "hospital", "ano_notific", "nu_notific")
 
 @admin.register(UploadDBF)
-class UploadDBFAdmin(admin.ModelAdmin):
+class UploadDBFAdmin(ModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
 
@@ -188,7 +190,7 @@ class UploadDBFAdmin(admin.ModelAdmin):
 
 
 @admin.register(PerfilUsuario)
-class PerfilUsuarioAdmin(admin.ModelAdmin):
+class PerfilUsuarioAdmin(ModelAdmin):
     list_display = ('usuario', 'role', 'id_unidade')
     list_filter = ('role',)
     search_fields = ('usuario__username', 'id_unidade')

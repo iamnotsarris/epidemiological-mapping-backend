@@ -3,10 +3,13 @@ import os
 from dotenv import load_dotenv
 from urllib.parse import urlparse, parse_qsl
 from datetime import timedelta
+from django.urls import reverse_lazy
+from django.utils.translation import gettext_lazy as _
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 def env_bool(key, default=False):
     val = os.getenv(key)
@@ -30,8 +33,8 @@ ALLOWED_HOSTS = [
 
 ]
 
-
 INSTALLED_APPS = [
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -66,7 +69,7 @@ ROOT_URLCONF = "api.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -102,13 +105,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "pt-br"
-TIME_ZONE = "America/Fortaleza"     # ✅ Fuso horário do Piauí
+TIME_ZONE = "America/Fortaleza"  # ✅ Fuso horário do Piauí
 USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
 
 # ============================================================
 # EMAIL (para dev; use SMTP em produção)
@@ -147,7 +149,6 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 
-
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -162,11 +163,11 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '60/hour',       # Visitantes: 60 req/hora
-        'user': '2000/hour',      # Usuários logados: 2000 req/hora
-        'upload': '10/hour',      # Upload de arquivos: 10/hora
-        'chat': '20/hour',        # Chat do assistente: 20/hora
-        'export': '30/hour',      # Exportações: 30/hora
+        'anon': '60/hour',  # Visitantes: 60 req/hora
+        'user': '2000/hour',  # Usuários logados: 2000 req/hora
+        'upload': '10/hour',  # Upload de arquivos: 10/hora
+        'chat': '20/hour',  # Chat do assistente: 20/hora
+        'export': '30/hour',  # Exportações: 30/hora
     },
 }
 
@@ -198,6 +199,110 @@ STORAGES = {
     },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+UNFOLD = {
+    "DASHBOARD_CALLBACK": "api.views.dashboard_callback",
+    "SITE_TITLE": "SIGEP admin",
+    "SITE_HEADER": "SIGEP",
+    "SITE_SUBHEADER": "Vigilância Epidemiológica",
+    "SITE_SYMBOL": "health_and_safety",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": False,
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": _("Painel"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Dashboard"),
+                        "icon": "dashboard",
+                        "link": reverse_lazy("admin:index"),
+                    },
+                ],
+            },
+            {
+                "title": _("Cadastros"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Upload de Arquivos"),
+                        "icon": "upload_file",
+                        "link": reverse_lazy("admin:api_uploaddbf_changelist"),
+                    },
+                    {
+                        "title": _("Perfis de Usuário"),
+                        "icon": "manage_accounts",
+                        "link": reverse_lazy("admin:api_perfilusuario_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": _("Doenças e Agravos"),
+                "separator": True,
+                "items": [
+                    {"title": _("Dengue"), "icon": "coronavirus",
+                     "link": reverse_lazy("admin:api_pacientedengue_changelist")},
+                    {"title": _("Tuberculose"), "icon": "pulmonology",
+                     "link": reverse_lazy("admin:api_pacientetuberculose_changelist")},
+                    {"title": _("Sífilis"), "icon": "health_and_safety",
+                     "link": reverse_lazy("admin:api_pacientesifilis_changelist")},
+                    {"title": _("Doença de Chagas"), "icon": "bug_report",
+                     "link": reverse_lazy("admin:api_pacientechagas_changelist")},
+                    {"title": _("Violência Doméstica"), "icon": "report",
+                     "link": reverse_lazy("admin:api_pacienteviolenciadomestica_changelist")},
+                    {"title": _("Hanseníase"), "icon": "dermatology",
+                     "link": reverse_lazy("admin:api_pacientehans_changelist")},
+                    {"title": _("Hepatites Virais"), "icon": "vaccines",
+                     "link": reverse_lazy("admin:api_pacientehepatite_changelist")},
+                    {"title": _("Animais Peçonhentos"), "icon": "pest_control",
+                     "link": reverse_lazy("admin:api_pacienteanimaispec_changelist")},
+                    {"title": _("Intoxicação Exógena"), "icon": "science",
+                     "link": reverse_lazy("admin:api_pacienteintoxicacao_changelist")},
+                    {"title": _("Leishmaniose"), "icon": "coronavirus",
+                     "link": reverse_lazy("admin:api_pacienteleish_changelist")},
+                    {"title": _("AIDS Adulto"), "icon": "bloodtype",
+                     "link": reverse_lazy("admin:api_pacienteaidsadulto_changelist")},
+                ],
+            },
+            {
+                "title": _("Imunização"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Cobertura Vacinal"),
+                        "icon": "syringe",
+                        "link": reverse_lazy("admin:cobertura_vacinal_coberturavacinal_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": _("Relatórios"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Relatórios Mensais"),
+                        "icon": "description",
+                        "link": reverse_lazy("admin:relatorios_relatoriomensal_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": _("Comunicação"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Canal de Comunicação"),
+                        "icon": "forum",
+                        "link": reverse_lazy("admin:canal_comunicacao_canalcomunicacao_changelist"),
+                    },
+                ],
+            },
+        ],
     },
 }
 

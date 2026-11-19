@@ -1,10 +1,11 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.core.files.base import ContentFile
+from unfold.admin import ModelAdmin
 from .models import RelatorioMensal
 from api.utils.gerador_pdf import gerar_relatorio_mensal
 
 @admin.register(RelatorioMensal)
-class RelatorioMensalAdmin(admin.ModelAdmin):
+class RelatorioMensalAdmin(ModelAdmin):
     list_display = ('__str__', 'data_geracao', 'arquivo_pdf', 'gerado_por')
     readonly_fields = ('arquivo_pdf', 'data_geracao', 'gerado_por')
 

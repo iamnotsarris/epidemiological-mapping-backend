@@ -1,0 +1,74 @@
+{% extends 'admin/base_site.html' %}
+{% load i18n %}
+
+{% block content %}
+  <div class="flex flex-col gap-6">
+
+    <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+      {% trans "Painel de Controle - SIGEP" %}
+    </h1>
+
+    <!-- Grid de Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+      <!-- Card: Dengue -->
+      <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400" style="color: #dc2626">
+          {% trans "Notificações de Dengue" %}
+        </h2>
+        <p class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-2" style="color: #dc2626">
+          {{ total_dengue }}
+        </p>
+      </div>
+
+      <!-- Card: Tuberculose -->
+      <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400" style="color: #dc2626">
+          {% trans "Notificações de Tuberculose" %}
+        </h2>
+        <p class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-2" style="color: #dc2626">
+          {{ total_tuberculose }}
+        </p>
+      </div>
+
+      <!-- Card: Sífilis -->
+      <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400" style="color: #dc2626">
+          {% trans "Notificações de Sífilis" %}
+        </h2>
+        <p class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-2" style="color: #dc2626">
+          {{ total_sifilis }}
+        </p>
+      </div>
+
+      <!-- Card: Cobertura Vacinal -->
+      <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+        <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400" style="color: #dc2626">
+          {% trans "Cobertura Vacinal Média" %}
+        </h2>
+        <p class="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-2" style="color: #dc2626">
+          {{ cobertura_media|floatformat:1 }}%
+        </p>
+      </div>
+    </div>
+
+    <!-- H1 Estilizado com CSS Inline (Garantido para funcionar) -->
+    <main class="flex justify-center items-center py-16 mt-8 border-t border-gray-200 dark:border-gray-700">
+      <h1 style="
+        font-size: 3.5rem;
+        font-weight: 800;
+        text-align: center;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        color: #3b82f6;
+        transition: transform 0.3s ease;
+        cursor: default;
+      " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+        Painel Admin do SIGEP
+      </h1>
+    </main>
+
+  </div>
+{% endblock %}

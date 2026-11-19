@@ -35,7 +35,7 @@ class Command(BaseCommand):
             {'imunobiologico': 'Varicela', 'cobertura': 80.92, 'meta': 95.0},
             {'imunobiologico': 'Meningocócica Conjugada (1º Reforço)', 'cobertura': 92.98, 'meta': 95.0},
 
-            # 4 anos de idade (Como não tem print do Gov para 4 anos, usei os dados do seu Admin, que estão mais atualizados)
+            # 4 anos de idade (Como não tem print do Gov para 4 anos, usei os dados do seu admin, que estão mais atualizados)
             {'imunobiologico': 'DTP (2º Reforço)', 'cobertura': 81.59, 'meta': 95.0},
             {'imunobiologico': 'Varicela - 2º dose', 'cobertura': 78.93, 'meta': 95.0},
             {'imunobiologico': 'Febre Amarela (Reforço)', 'cobertura': 77.81, 'meta': 95.0},
