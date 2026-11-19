@@ -1,6 +1,7 @@
 import os
 import tempfile
 from datetime import datetime
+from django.db.models import Avg
 
 import pandas as pd
 import requests
@@ -737,6 +738,10 @@ def download_relatorio_mensal(request):
 def dashboard_callback(request, context):
     context.update({
         "total_dengue": PacienteDengue.objects.count(),
-
+        "total_tuberculose": PacienteTuberculose.objects.count(),
+        "total_sifilis": PacienteSifilis.objects.count(),
+        "cobertura_media": (
+            CoberturaVacinal.objects.aggregate(media=Avg("cobertura_percentual"))["media"] or 0
+        ),
     })
     return context

@@ -11,3 +11,7 @@ class CanalComunicacao(models.Model):
 
     def __str__(self):
         return self.title
+
+    class Meta:
+        verbose_name = "Canal de Comunicação"
+        verbose_name_plural = "Canal de Comunicação"

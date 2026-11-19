@@ -37,6 +37,10 @@ class PacienteDengue(models.Model):
     def __str__(self):
         return f"{self.numero_notificacao} - {self.nome_paciente}"
 
+    class Meta:
+        verbose_name = "Dengue"
+        verbose_name_plural = "Casos de Dengue"
+
 class PacienteTuberculose(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
@@ -46,6 +50,10 @@ class PacienteTuberculose(models.Model):
 
     def __str__(self):
         return f"{self.nm_ubs} - {self.nu_notific}"
+
+    class Meta:
+        verbose_name = "Tuberculose"
+        verbose_name_plural = "Casos de Tuberculos"
 
 class PacienteSifilis(models.Model):
     nu_notific=models.TextField(null=True, blank=True)
@@ -65,11 +73,19 @@ class PacienteSifilis(models.Model):
         null=True, blank=True,
     )
 
+    class Meta:
+        verbose_name = "Sifilis"
+        verbose_name_plural = "Casos de Sifilis"
+
 class PacienteChagas(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Chagas"
+        verbose_name_plural = "Casos de Chagas"
 
 class PacienteHans(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
@@ -77,11 +93,19 @@ class PacienteHans(models.Model):
     nu_notific = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
 
+    class Meta:
+        verbose_name = "Hanseníase"
+        verbose_name_plural = "Casos de Hanseníase"
+
 class PacienteViolenciaDomestica(models.Model):
     nu_notific = models.TextField(null=True, blank=True)
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Violência"
+        verbose_name_plural = "Casos de Violência"
 
 class PacienteHepatite(models.Model):
     nu_notific = models.TextField(null=True, blank=True)
@@ -90,12 +114,20 @@ class PacienteHepatite(models.Model):
     hospital = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
 
+    class Meta:
+        verbose_name = "Hepatite"
+        verbose_name_plural = "Casos de Hepatites"
+
 class PacienteAnimaisPec(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
     hospital = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Animail Peçonhento"
+        verbose_name_plural = "Casos de Animais Peçonhentos"
 
 class PacienteIntoxicacao(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
@@ -104,6 +136,10 @@ class PacienteIntoxicacao(models.Model):
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
+    class Meta:
+        verbose_name = "Intoxicação"
+        verbose_name_plural = "Casos de Intoxicações"
+
 class PacienteLeish(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
@@ -111,12 +147,20 @@ class PacienteLeish(models.Model):
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
 
+    class Meta:
+        verbose_name = "Leishmoníase"
+        verbose_name_plural = "Casos de Leishmoníase"
+
 class PacienteAidsAdulto(models.Model):
     id_unidade = models.TextField(null=True, blank=True)
     nm_ubs = models.TextField(null=True, blank=True)
     hospital = models.TextField(null=True, blank=True)
     ano_notific = models.TextField(null=True, blank=True)
     nu_notific = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Aids Adulto"
+        verbose_name_plural = "Casos de Aids Adultos"
 
 class UploadDBF(models.Model):
     arquivo = models.FileField(upload_to='dbfs/')

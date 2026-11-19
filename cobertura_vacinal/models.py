@@ -10,7 +10,7 @@ class CoberturaVacinal(models.Model):
 
     class Meta:
         verbose_name = "Cobertura Vacinal"
-        verbose_name_plural = "Coberturas Vacinais"
+        verbose_name_plural = "Cobertura Vacinal"
         unique_together = ('ano', 'imunobiologico')
 
     def __str__(self):
